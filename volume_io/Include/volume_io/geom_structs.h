@@ -35,16 +35,6 @@
 #define VIO_Y 1
 #define VIO_Z 2
 
-#if !VIO_PREFIX_NAMES         /* Don't define commonly used symbols */
-
-#define  N_DIMENSIONS  VIO_N_DIMENSIONS
-
-#define  X             VIO_X
-#define  Y             VIO_Y
-#define  Z             VIO_Z
-
-#endif /* !VIO_PREFIX_NAMES */
-
 /* ----------------------------- MNI Header -----------------------------------
 @NAME       : Point   type
 @INPUT      : 

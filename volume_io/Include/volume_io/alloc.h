@@ -292,7 +292,3 @@
 
 #define  VIO_FREE5D( ptr )                                                        \
          free_memory_5d( (void ******) &(ptr) _ALLOC_SOURCE_LINE )
-
-#if !VIO_PREFIX_NAMES
-#endif /* !VIO_PREFIX_NAMES */
-#endif

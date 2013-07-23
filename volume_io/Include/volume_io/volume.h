@@ -120,10 +120,6 @@ typedef  struct
 
 typedef  volume_struct  *VIO_Volume;
 
-#if !VIO_PREFIX_NAMES
-typedef VIO_Volume Volume;
-#endif /* !VIO_PREFIX_NAMES */
-
 /* ---- macro for stepping through entire volume */
 
 #define  BEGIN_ALL_VOXELS( volume, v0, v1, v2, v3, v4 )                       \

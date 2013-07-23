@@ -52,8 +52,5 @@ typedef  struct
     int        last_check_step;
 } VIO_progress_struct;
 
-#if !VIO_PREFIX_NAMES
-typedef VIO_progress_struct progress_struct;
-#endif /* VIO_PREFIX_NAMES */
 
 #endif /* DEF_PROGRESS */
