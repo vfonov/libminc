@@ -20,8 +20,8 @@
 #include  <internal_volume_io.h>
 
 #ifdef HAVE_MINC1
-
 #include  <minc.h>
+#endif /*HAVE_MINC1*/
 
 #define  DEFAULT_SUFFIX  "fre"
 
@@ -623,4 +623,3 @@ VIOAPI  VIO_BOOL  input_more_free_format_file(
 
     return( more_to_do );
 }
-#endif /*HAVE_MINC1*/
