@@ -655,13 +655,14 @@ VIOAPI  void  delete_volume_cache(
     if( cache->minc_file != NULL )
     {
 
-      /*TODO: replace to MINC2 API*/
 #ifdef HAVE_MINC1
       if( cache->output_file_is_open )
       {
             (void) close_minc_output( (Minc_file) cache->minc_file );
       } else
             (void) close_minc_input( (Minc_file) cache->minc_file );
+#elseif HAVE_MINC2
+      /*TODO: replace to MINC2 API*/
 #endif       
     }
 }
@@ -841,6 +842,8 @@ VIOAPI  void  open_cache_volume_input_file(
 
 #ifdef HAVE_MINC1
     cache->minc_file = initialize_minc_input( filename, volume, options );
+#elseif HAVE_MINC2
+/*TODO: add minc2 api call*/    
 #endif     
 
     cache->must_read_blocks_before_use = TRUE;
@@ -909,6 +912,8 @@ static  VIO_Status  open_cache_volume_output_file(
         out_dim_names = create_output_dim_names( volume,
                                                  cache->original_filename, 
                                                  &cache->options, out_sizes );
+#elseif HAVE_MINC2
+/*TODO: adopt for MINC2*/	
 #endif 
         if( out_dim_names == NULL )
             return( VIO_ERROR );
@@ -929,6 +934,9 @@ static  VIO_Status  open_cache_volume_output_file(
                                         cache->file_voxel_max,
                                         get_voxel_to_world_transform(volume),
                                         volume, &cache->options );
+#elseif HAVE_MINC2
+/*TODO: adopt for MINC2*/	
+    out_minc_file = NULL;
 #endif 
     if( out_minc_file == NULL )
         return( VIO_ERROR );
@@ -938,6 +946,9 @@ static  VIO_Status  open_cache_volume_output_file(
                                                 cache->original_filename,
                                                 cache->history );
 
+#elseif HAVE_MINC2
+    /*TODO: adopt for MINC2*/
+    status = VIO_ERROR;
 #endif 
     
     if( status != VIO_OK )
@@ -952,6 +963,9 @@ static  VIO_Status  open_cache_volume_output_file(
 
 #ifdef HAVE_MINC1
     status = set_minc_output_random_order( out_minc_file );
+#elseif HAVE_MINC2
+/*TODO: adopt for MINC2*/	
+    status = VIO_ERROR;
 #endif 
 
     if( status != VIO_OK )
@@ -966,6 +980,8 @@ static  VIO_Status  open_cache_volume_output_file(
         (void) output_minc_volume( out_minc_file );
 
         (void) close_minc_input( (Minc_file) cache->minc_file );
+#elseif HAVE_MINC2
+/*TODO: adopt for MINC2*/	
 #endif 
 
         cache->must_read_blocks_before_use = TRUE;
@@ -1606,5 +1622,3 @@ static  void  record_cache_no_hit(
 }
 
 #endif
-
-//#endif /*HAVE_MINC1*/

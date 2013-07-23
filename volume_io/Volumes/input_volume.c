@@ -44,17 +44,17 @@
 ---------------------------------------------------------------------------- */
 
 VIOAPI  VIO_Status  start_volume_input(
-    VIO_STR               filename,
-    int                  n_dimensions,
-    VIO_STR               dim_names[],
-    nc_type              volume_nc_data_type,
-    VIO_BOOL              volume_signed_flag,
-    VIO_Real                 volume_voxel_min,
-    VIO_Real                 volume_voxel_max,
-    VIO_BOOL              create_volume_flag,
-    VIO_Volume           *volume,
-    minc_input_options   *options,
-    volume_input_struct  *input_info )
+    VIO_STR             filename,
+    int                 n_dimensions,
+    VIO_STR             dim_names[],
+    nc_type             volume_nc_data_type,
+    VIO_BOOL            volume_signed_flag,
+    VIO_Real            volume_voxel_min,
+    VIO_Real            volume_voxel_max,
+    VIO_BOOL            create_volume_flag,
+    VIO_Volume          *volume,
+    minc_input_options  *options,
+    volume_input_struct *input_info )
 {
     VIO_Status          status;
     int             d;
@@ -93,7 +93,7 @@ VIOAPI  VIO_Status  start_volume_input(
     case  MNC_FORMAT:
         if( !file_exists( expanded_filename ) )
         {
-            (void) file_exists_as_compressed( expanded_filename,
+            file_exists_as_compressed( expanded_filename,
                                               &expanded_filename );
         }
 
@@ -140,7 +140,7 @@ VIOAPI  void  delete_volume_input(
     switch( input_info->file_format )
     {
     case  MNC_FORMAT:
-        (void) close_minc_input( input_info->minc_file );
+        close_minc_input( input_info->minc_file );
         break;
 
     case  FREE_FORMAT:

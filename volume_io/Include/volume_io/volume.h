@@ -34,6 +34,10 @@
 #include  <minc.h>
 #endif /*HAVE_MINC1*/
 
+#ifdef HAVE_MINC2
+#include <minc2.h>
+#endif
+
 #include  <volume_io/transforms.h>
 #include  <volume_io/multidim.h>
 
@@ -395,6 +399,7 @@ typedef  struct
     /* input and output */
 
     int                cdfid;
+    mihandle_t         minc2id;
     int                img_var;
     int                n_file_dimensions;
     long               sizes_in_file[MAX_VAR_DIMS];

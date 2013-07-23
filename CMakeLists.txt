@@ -251,15 +251,15 @@ SET(volume_io_LIB_SRCS
    volume_io/Volumes/get_hyperslab.c
    volume_io/Volumes/input_free.c
    volume_io/Volumes/input_mnc.c
-   volume_io/Volumes/input_mnc2.c
    volume_io/Volumes/input_volume.c
    volume_io/Volumes/multidim_arrays.c
    volume_io/Volumes/output_mnc.c
-   volume_io/Volumes/output_mnc2.c
    volume_io/Volumes/output_volume.c
    volume_io/Volumes/set_hyperslab.c
    volume_io/Volumes/volume_cache.c
    volume_io/Volumes/volumes.c
+#   volume_io/Volumes/input_mnc2.c
+#   volume_io/Volumes/output_mnc2.c
 )
 
 SET(volume_io_HEADERS
