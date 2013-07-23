@@ -20,8 +20,10 @@
 #include  <internal_volume_io.h>
 
 #ifdef HAVE_MINC1
-
 #include  <minc.h>
+#elseif HAVE_MINC2
+#include <minc2.h>
+#endif /*HAVE_MINC1*/
 
 #define   FREE_ENDING   "fre"
 
@@ -90,6 +92,7 @@ VIOAPI  VIO_Status  start_volume_input(
 
     switch( input_info->file_format )
     {
+#ifdef HAVE_MINC1
     case  MNC_FORMAT:
         if( !file_exists( expanded_filename ) )
         {
@@ -108,7 +111,10 @@ VIOAPI  VIO_Status  start_volume_input(
         }
 
         break;
-
+#endif /*HAVE_MINC1*/        
+#ifdef HAVE_MINC2
+        /*add minc2 here*/
+#endif /*HAVE_MINC2*/
     case  FREE_FORMAT:
         status = initialize_free_format_input( expanded_filename,
                                                *volume, input_info );
@@ -139,10 +145,15 @@ VIOAPI  void  delete_volume_input(
 {
     switch( input_info->file_format )
     {
+#ifdef HAVE_MINC1
     case  MNC_FORMAT:
         close_minc_input( input_info->minc_file );
         break;
-
+#endif
+#ifdef HAVE_MINC2
+/*add minc2 here*/
+#endif /*HAVE_MINC2*/
+        
     case  FREE_FORMAT:
         delete_free_format_input( input_info );
         break;
@@ -171,11 +182,17 @@ VIOAPI  VIO_BOOL  input_more_of_volume(
 
     switch( input_info->file_format )
     {
-    case  MNC_FORMAT:
+#ifdef HAVE_MINC1
+      case  MNC_FORMAT:
         more_to_do = input_more_minc_file( input_info->minc_file,
                                            fraction_done );
         break;
-
+#endif
+        
+#ifdef HAVE_MINC2
+/*add minc2 here*/
+#endif /*HAVE_MINC2*/
+        
     case  FREE_FORMAT:
         more_to_do = input_more_free_format_file( volume, input_info,
                                                   fraction_done );
@@ -285,5 +302,3 @@ VIOAPI  Minc_file   get_volume_input_minc_file(
 {
     return( volume_input->minc_file );
 }
-
-#endif /*HAVE_MINC1*/

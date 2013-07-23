@@ -44,10 +44,9 @@ static  VIO_BOOL  match_dimension_names(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  int   get_minc_file_n_dimensions(
+VIOAPI  int   get_minc2_file_n_dimensions(
     VIO_STR   filename )
 {
-    int       cdfid, img_var, n_dims;
     int       dim_vars[MAX_VAR_DIMS];
     nc_type   file_datatype;
     VIO_STR    expanded;
@@ -56,25 +55,11 @@ VIOAPI  int   get_minc_file_n_dimensions(
 
     expanded = expand_filename( filename );
 
-    cdfid = miopen( expanded, NC_NOWRITE );
-
-    if( cdfid == MI_ERROR )
-    {
-        print_error( "Error opening %s\n", expanded );
-
-        delete_string( expanded );
-
-        return( -1 );
-    }
 
     delete_string( expanded );
 
     img_var = ncvarid( cdfid, MIimage );
 
-    ncvarinq( cdfid, img_var, (char *) NULL, &file_datatype,
-              &n_dims, dim_vars, (int *) NULL );
-
-    (void) miclose( cdfid );
 
     return( n_dims );
 }

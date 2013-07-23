@@ -1,5 +1,5 @@
 #ifndef  __VOL_IO_PROTOTYPES_H__
-#define  __VOL_IO_PROTOTYPES_H__
+#define  __VOL_IO_PROTOTYPES_H__ 1
 
 #include "basic.h"
 
@@ -1490,31 +1490,31 @@ VIOAPI  void  copy_multidim_reordered(
     int                 to_dest_index[] );
 
 VIOAPI  Minc_file  initialize_minc_output(
-    VIO_STR                 filename,
+    VIO_STR                filename,
     int                    n_dimensions,
-    VIO_STR                 dim_names[],
+    VIO_STR                dim_names[],
     int                    sizes[],
     nc_type                file_nc_data_type,
     VIO_BOOL               file_signed_flag,
-    VIO_Real                   file_voxel_min,
-    VIO_Real                   file_voxel_max,
-    VIO_General_transform      *voxel_to_world_transform,
-    VIO_Volume                 volume_to_attach,
+    VIO_Real               file_voxel_min,
+    VIO_Real               file_voxel_max,
+    VIO_General_transform  *voxel_to_world_transform,
+    VIO_Volume             volume_to_attach,
     minc_output_options    *options );
 
 VIOAPI  VIO_Status  copy_auxiliary_data_from_minc_file(
-    Minc_file   file,
+    Minc_file    file,
     VIO_STR      filename,
     VIO_STR      history_string );
 
 VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc_file(
-    Minc_file   file,
-    int         src_cdfid,
+    Minc_file    file,
+    int          src_cdfid,
     VIO_STR      history_string );
 
 VIOAPI  VIO_Status  add_minc_history(
     Minc_file   file,
-    VIO_STR      history_string );
+    VIO_STR     history_string );
 
 VIOAPI  VIO_Status  set_minc_output_random_order(
     Minc_file   file );
@@ -1530,10 +1530,10 @@ VIOAPI  VIO_Status  output_minc_hyperslab(
     int                 file_count[] );
 
 VIOAPI  VIO_Status  output_volume_to_minc_file_position(
-    Minc_file   file,
-    VIO_Volume      volume,
-    int         volume_count[],
-    long        file_start[] );
+    Minc_file     file,
+    VIO_Volume    volume,
+    int           volume_count[],
+    long          file_start[] );
 
 VIOAPI  VIO_Status  output_minc_volume(
     Minc_file   file );

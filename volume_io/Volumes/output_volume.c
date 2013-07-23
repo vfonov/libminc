@@ -35,7 +35,6 @@
 @CREATED    : 1993            David MacDonald
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
-#ifdef HAVE_MINC1
 
 VIOAPI  VIO_Status   get_file_dimension_names(
     VIO_STR   filename,
@@ -261,13 +260,25 @@ VIOAPI  VIO_Status   copy_volume_auxiliary_and_history(
 
     if( copy_original_file_data )
     {
-        status = copy_auxiliary_data_from_minc_file( minc_file,
+#ifdef HAVE_MINC1
+      status = copy_auxiliary_data_from_minc_file( minc_file,
                                                      original_filename,
                                                      history );
+#elseif HAVE_MINC2
+      /*TODO: add minc2 here*/
+      status = VIO_ERROR;
+#endif       
     }
     else if( history != NULL )
-        status = add_minc_history( minc_file, history );
-
+    {
+#ifdef HAVE_MINC1
+      status = add_minc_history( minc_file, history );
+#elseif HAVE_MINC2
+      /*TODO: add minc2 here*/
+      status = VIO_ERROR;
+#endif       
+    }
+    
     return( status );
 }
 
@@ -347,14 +358,17 @@ VIOAPI  VIO_Status  output_modified_volume(
     {
         set_minc_output_use_volume_starts_and_steps_flag( &used_options, TRUE );
     }
-
+#ifdef HAVE_MINC1
     minc_file = initialize_minc_output( filename,
                                         n_dims, dim_names, sizes,
                                         file_nc_data_type, file_signed_flag,
                                         file_voxel_min, file_voxel_max,
                                         get_voxel_to_world_transform(volume),
                                         volume, &used_options );
-
+#elseif HAVE_MINC2
+    /*TODO: add minc2 here*/
+    minc_file = NULL;
+#endif 
     if( minc_file == NULL )
         return( VIO_ERROR );
 
@@ -408,4 +422,3 @@ VIOAPI  VIO_Status  output_volume(
                                     file_voxel_min, file_voxel_max,
                                     volume, NULL, history, options ) );
 }
-#endif /*HAVE_MINC1*/

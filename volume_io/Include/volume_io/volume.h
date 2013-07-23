@@ -1,5 +1,5 @@
 #ifndef  __VOLUME_H__
-#define  __VOLUME_H__
+#define  __VOLUME_H__ 1
 
 /* ----------------------------------------------------------------------------
 @COPYRIGHT  :
@@ -395,7 +395,6 @@ typedef  struct
     /* input and output */
 
     int                cdfid;
-    mihandle_t         minc2id;
     int                img_var;
     int                n_file_dimensions;
     long               sizes_in_file[MAX_VAR_DIMS];
@@ -440,6 +439,10 @@ typedef  struct
     int                image_dims[MAX_VAR_DIMS];
     int                src_cdfid;
     int                src_img_var;
+    
+    #ifdef HAVE_MINC2    
+    mihandle_t         minc2id;
+    #endif /*HAVE_MINC2*/    
 } minc_file_struct;
 
 typedef  minc_file_struct  *Minc_file;
@@ -448,7 +451,7 @@ typedef  minc_file_struct  *Minc_file;
 
 /* --- recognized file formats */
 
-typedef  enum  { MNC_FORMAT, FREE_FORMAT }       Volume_file_formats;
+typedef  enum  { MNC_FORMAT, FREE_FORMAT, MNC2_FORMAT }       Volume_file_formats;
 
 typedef struct
 {
@@ -474,11 +477,12 @@ typedef struct
 
 /* --------------------- filter types -------------------------------- */
 
+/*
 typedef enum {
                NEAREST_NEIGHBOUR,
                LINEAR_INTERPOLATION,
                BOX_FILTER,
                TRIANGLE_FILTER,
-               GAUSSIAN_FILTER } Filter_types;
+               GAUSSIAN_FILTER } Filter_types; */
 
 #endif /* __VOLUME_H__ */

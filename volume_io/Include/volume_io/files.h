@@ -1,5 +1,5 @@
-#ifndef  DEF_FILES
-#define  DEF_FILES
+#ifndef  __FILES_H_
+#define  __FILES_H_ 1
 
 /* ----------------------------------------------------------------------------
 @COPYRIGHT  :
@@ -36,4 +36,4 @@ typedef  enum  { ASCII_FORMAT, BINARY_FORMAT }          VIO_File_formats;
 
 typedef  enum  { READ_FILE, WRITE_FILE, APPEND_FILE }   VIO_IO_types;
 
-#endif /* DEF_FILES */
+#endif /* __FILES_H_ */

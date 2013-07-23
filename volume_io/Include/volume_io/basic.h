@@ -1,5 +1,5 @@
-#ifndef  DEF_BASIC
-#define  DEF_BASIC
+#ifndef  __BASIC_H_
+#define  __BASIC_H_ 1 
 
 /* ----------------------------------------------------------------------------
 @COPYRIGHT  :
@@ -151,4 +151,4 @@ typedef enum { VIO_OK=0,
 #define  HANDLE_INTERNAL_ERROR( X )                                           \
          handle_internal_error( X )
 
-#endif /* DEF_BASIC */
+#endif /* __BASIC_H_ */

@@ -1,5 +1,5 @@
-#ifndef  DEF_MULTI_DIM
-#define  DEF_MULTI_DIM
+#ifndef  __MULTI_DIM_H_
+#define  __MULTI_DIM_H_ 1 
 
 /* ----------------------------------------------------------------------------
 @COPYRIGHT  :
@@ -284,4 +284,4 @@ typedef  struct
          case 5:  GET_MULTIDIM_PTR_5D( ptr, array, x, y, z, t, v );  break; \
          }
 
-#endif
+#endif /* __MULTIDIM_H__*/
