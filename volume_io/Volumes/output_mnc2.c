@@ -27,11 +27,17 @@
 
 #define  UNITS           "mm"
 
+VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
+                                                             Minc_file   file,
+                                                             int         src_cdfid,
+                                                             VIO_STR      history_string );
+
+
 static  VIO_Status  get_dimension_ordering(
     int          n_vol_dims,
-    VIO_STR       vol_dim_names[],
+    VIO_STR      vol_dim_names[],
     int          n_file_dims,
-    VIO_STR       file_dim_names[],
+    VIO_STR      file_dim_names[],
     int          to_volume[],
     int          to_file[] );
 
@@ -90,7 +96,7 @@ static  VIO_BOOL  is_default_direction_cosine(
 ---------------------------------------------------------------------------- */
 
 static  VIO_Status  output_world_transform(
-    Minc_file              file,
+    Minc_file               file,
     VIO_STR                 space_type,
     VIO_General_transform   *voxel_to_world_transform,
     VIO_BOOL                use_volume_starts_and_steps_flag )
@@ -177,29 +183,7 @@ static  VIO_Status  output_world_transform(
     {
         if( convert_dim_name_to_spatial_axis( file->dim_names[dim], &axis ) )
         {
-            file->dim_ids[dim] = micreate_std_variable( file->cdfid,
-                                      file->dim_names[dim], NC_DOUBLE, 0, NULL);
-
-            if( file->dim_ids[dim] < 0 )
-                return( VIO_ERROR );
-
-            (void) miattputdbl( file->cdfid, file->dim_ids[dim], MIstep,
-                                step[dim]);
-            (void) miattputdbl( file->cdfid, file->dim_ids[dim], MIstart,
-                                start[dim]);
-            if( !is_default_direction_cosine( axis, dir_cosines[dim] ) )
-            {
-                (void) ncattput( file->cdfid, file->dim_ids[dim],
-                                 MIdirection_cosines,
-                                 NC_DOUBLE, VIO_N_DIMENSIONS, dir_cosines[dim]);
-            }
-            (void) miattputstr( file->cdfid, file->dim_ids[dim], MIunits,
-                                UNITS );
-            if( !equal_strings( space_type, MI_UNKNOWN_SPACE ) )
-            {
-                (void) miattputstr( file->cdfid, file->dim_ids[dim],
-                                    MIspacetype, space_type );
-            }
+          /*TODO create MINC2 dimensions*/
         }
         else
             file->dim_ids[dim] = -1;
@@ -225,30 +209,25 @@ static  VIO_Status  output_world_transform(
 
 static void create_image_variable(Minc_file file)
 {
-    int old_ncopts;
-
-    old_ncopts = ncopts;
-
     /* Create the variable */
-    file->img_var_id = micreate_std_variable( file->cdfid, MIimage,
+/*    file->img_var_id = micreate_std_variable( file->cdfid, MIimage,
                                               file->nc_data_type,
                                               file->n_file_dimensions, 
                                               file->image_dims );
-
+*/
     /* Copy all attributes if required */
     if( file->src_img_var != MI_ERROR )
     {
-        ncopts = 0;
+      /*
         (void) micopy_all_atts( file->src_cdfid, file->src_img_var,
                                 file->cdfid, file->img_var_id );
         (void) ncattdel( file->cdfid, file->img_var_id, MIvalid_max );
         (void) ncattdel( file->cdfid, file->img_var_id, MIvalid_min );
         (void) ncattdel( file->cdfid, file->img_var_id, MIvalid_range );
-
-        ncopts = old_ncopts;
+*/
     }
 
-    (void) miattputstr( file->cdfid, file->img_var_id, MIcomplete, MI_FALSE );
+/*    (void) miattputstr( file->cdfid, file->img_var_id, MIcomplete, MI_FALSE );
 
     if( file->signed_flag )
         (void) miattputstr( file->cdfid, file->img_var_id, MIsigntype,
@@ -256,9 +235,10 @@ static void create_image_variable(Minc_file file)
     else
         (void) miattputstr( file->cdfid, file->img_var_id, MIsigntype,
                             MI_UNSIGNED );
-
+*/
     /* --- put the valid voxel range */
 
+/*
     if( file->valid_range[0] < file->valid_range[1] )
     {
 
@@ -266,7 +246,7 @@ static void create_image_variable(Minc_file file)
                                   file->valid_range);
 
     }
-
+*/
 }
 
 /* ----------------------------- MNI Header -----------------------------------
@@ -289,13 +269,14 @@ static void create_image_variable(Minc_file file)
 static VIO_Status end_file_def(Minc_file file)
 {
    int ret;
-
+/*
    create_image_variable(file);
 
    ret = ncendef( file->cdfid );
 
    return ( ret == MI_ERROR ? VIO_ERROR : VIO_OK );
-
+*/
+  return VIO_ERROR;
 }
 
 /* ----------------------------- MNI Header -----------------------------------
@@ -329,7 +310,7 @@ static VIO_Status end_file_def(Minc_file file)
                                               found by peter
 ---------------------------------------------------------------------------- */
 
-VIOAPI  Minc_file  initialize_minc_output(
+VIOAPI  Minc_file  initialize_minc2_output(
     VIO_STR                filename,
     int                    n_dimensions,
     VIO_STR                dim_names[],
@@ -473,33 +454,33 @@ VIOAPI  Minc_file  initialize_minc_output(
 
     /*--- create the file */
 
-    ncopts = NC_VERBOSE;
-
-    file->cdfid =  micreate( file->filename, NC_CLOBBER );
+    /*file->cdfid =  micreate( file->filename, NC_CLOBBER );*/
 
     if( file->cdfid == MI_ERROR )
     {
-        print_error( "Error: opening MINC file \"%s\".\n", file->filename );
+        print_error( "Error: opening MINC2 file \"%s\".\n", file->filename );
         return( NULL );
     }
 
     /* Create the root variable */
-    (void) micreate_std_variable(file->cdfid, MIrootvariable, 
+/*    (void) micreate_std_variable(file->cdfid, MIrootvariable,
                                  NC_INT, 0, NULL);
-
+*/
     for_less( d, 0, n_dimensions )
     {
         file->sizes_in_file[d] = (long) sizes[d];
         file->indices[d] = 0;
         file->dim_names[d] = create_string( dim_names[d] );
+      /*
         file->image_dims[d] = ncdimdef( file->cdfid, file->dim_names[d],
-                                        (long) sizes[d] );
+                                        (long) sizes[d] );*/
     }
 
     if( output_world_transform( file, volume_to_attach->coordinate_system_name,
                                 voxel_to_world_transform,
                                 options->use_volume_starts_and_steps ) != VIO_OK )
     {
+      /*TODO: print error message*/
         FREE( file );
         return( NULL );
     }
@@ -518,26 +499,25 @@ VIOAPI  Minc_file  initialize_minc_output(
 
     if( file->image_range[0] < file->image_range[1] )
     {
+      /*
         file->min_id = micreate_std_variable( file->cdfid, MIimagemin,
                                               NC_DOUBLE, 0, (int *) NULL );
         file->max_id = micreate_std_variable( file->cdfid, MIimagemax,
-                                              NC_DOUBLE, 0, (int *) NULL );
+                                              NC_DOUBLE, 0, (int *) NULL );*/
     }
     else
     {
         n_range_dims = n_dimensions - 2;
         if( equal_strings( dim_names[n_dimensions-1], MIvector_dimension ) )
             --n_range_dims;
-
+/*
         file->min_id = micreate_std_variable( file->cdfid, MIimagemin,
                                               NC_DOUBLE, n_range_dims, 
                                               file->image_dims);
         file->max_id = micreate_std_variable( file->cdfid, MIimagemax,
                                               NC_DOUBLE, n_range_dims, 
-                                              file->image_dims );
+                                              file->image_dims );*/
     }
-
-    ncopts = NC_VERBOSE | NC_FATAL;
 
     file->end_def_done = FALSE;
     file->variables_written = FALSE;
@@ -561,38 +541,23 @@ VIOAPI  Minc_file  initialize_minc_output(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_Status  copy_auxiliary_data_from_minc_file(
-    Minc_file   file,
+VIOAPI  VIO_Status  copy_auxiliary_data_from_minc2_file(
+    Minc_file    file,
     VIO_STR      filename,
     VIO_STR      history_string )
 {
     VIO_Status  status;
-    int     src_cdfid;
+    int     src_cdfid=0;
     VIO_STR  expanded;
 
     if( file->ignoring_because_cached )
         return( VIO_OK );
 
-    ncopts = NC_VERBOSE;
 
     expanded = expand_filename( filename );
 
-    src_cdfid =  miopen( expanded, NC_NOWRITE );
-
-    if( src_cdfid == MI_ERROR )
-    {
-        print_error( "Error opening %s\n", expanded );
-        return( VIO_ERROR );
-    }
-
-    delete_string( expanded );
-
-    status = copy_auxiliary_data_from_open_minc_file( file, src_cdfid,
+    status = copy_auxiliary_data_from_open_minc2_file( file, src_cdfid,
                                                       history_string );
-
-    (void) miclose( src_cdfid );
-
-    ncopts = NC_VERBOSE | NC_FATAL;
 
     return( status );
 }
@@ -613,7 +578,7 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_minc_file(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc_file(
+VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
     Minc_file   file,
     int         src_cdfid,
     VIO_STR      history_string )
@@ -642,16 +607,15 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc_file(
         return( VIO_ERROR );
     }
 
-    ncopts = 0;
-
     n_excluded = 0;
 
     for_less( i, 0, VIO_SIZEOF_STATIC_ARRAY( excluded_list ) )
     {
+      /*
         if( (varid = ncvarid(src_cdfid, excluded_list[i] )) != MI_ERROR )
-            excluded_vars[n_excluded++] = varid;
+            excluded_vars[n_excluded++] = varid;*/
     }
-
+/*
     if( (src_img_var = ncvarid(src_cdfid, MIimage )) != MI_ERROR )
         excluded_vars[n_excluded++] = src_img_var;
     if( (src_max_id = ncvarid(src_cdfid, MIimagemax )) != MI_ERROR )
@@ -660,8 +624,6 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc_file(
         excluded_vars[n_excluded++] = src_min_id;
     if( (src_root_id = ncvarid(src_cdfid, MIrootvariable )) != MI_ERROR )
         excluded_vars[n_excluded++] = src_root_id;
-
-    ncopts = NC_VERBOSE;
 
     (void) micopy_all_var_defs( src_cdfid, file->cdfid, n_excluded,
                                 excluded_vars );
@@ -684,7 +646,7 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc_file(
                                 file->cdfid,
                                 ncvarid( file->cdfid, MIrootvariable) );
     }
-
+*/
     status = VIO_OK;
 
     if( history_string != NULL )
@@ -712,11 +674,9 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc_file(
     {
         file->end_def_done = TRUE;
 
-        (void) micopy_all_var_values( src_cdfid, file->cdfid,
-                                      n_excluded, excluded_vars );
+        /*(void) micopy_all_var_values( src_cdfid, file->cdfid,
+                                      n_excluded, excluded_vars );*/
     }
-
-    ncopts = NC_VERBOSE | NC_FATAL;
 
     return( status );
 }
@@ -753,22 +713,21 @@ VIOAPI  VIO_Status  add_minc_history(
         return( VIO_ERROR );
     }
 
-    ncopts = 0;
-
+  /*
     if( ncattinq(file->cdfid, NC_GLOBAL, MIhistory, &datatype, &old_att_length)
                                                           == MI_ERROR ||
         datatype != NC_CHAR )
     {
         old_att_length = 0;
     }
-
+*/
     /* Allocate a string and get the old history */
 
     new_history = alloc_string( old_att_length );
     new_history[0] = (char) 0;
-
+/*
     (void) miattgetstr( file->cdfid, NC_GLOBAL, MIhistory, old_att_length+1,
-                        new_history );
+                        new_history );*/
 
 /*
     if( new_history[old_att_length] != (char) 0 )
@@ -784,8 +743,7 @@ VIOAPI  VIO_Status  add_minc_history(
 
     concat_to_string( &new_history, history_string );
 
-    ncopts = NC_VERBOSE | NC_FATAL;
-    (void) miattputstr( file->cdfid, NC_GLOBAL, MIhistory, new_history );
+/*    (void) miattputstr( file->cdfid, NC_GLOBAL, MIhistory, new_history );*/
 
     delete_string( new_history );
 
@@ -812,9 +770,9 @@ VIOAPI  VIO_Status  add_minc_history(
 
 static  VIO_Status  get_dimension_ordering(
     int          n_vol_dims,
-    VIO_STR       vol_dim_names[],
+    VIO_STR      vol_dim_names[],
     int          n_file_dims,
-    VIO_STR       file_dim_names[],
+    VIO_STR      file_dim_names[],
     int          to_volume[],
     int          to_file[] )
 {
@@ -883,9 +841,7 @@ static  VIO_Status  check_minc_output_variables(
     {
         /* --- Get into data mode */
 
-        ncopts = NC_VERBOSE;
         status = end_file_def( file );
-        ncopts = NC_VERBOSE | NC_FATAL;
         file->end_def_done = TRUE;
 
         if( status != VIO_OK )
@@ -901,7 +857,6 @@ static  VIO_Status  check_minc_output_variables(
 
         file->variables_written = TRUE;
 
-        ncopts = NC_VERBOSE;
         for_less( d, 0, file->n_file_dimensions )
             mindex[d] = 0;
 
@@ -910,11 +865,12 @@ static  VIO_Status  check_minc_output_variables(
         {
             if( convert_dim_name_to_spatial_axis( file->dim_names[d], &axis ) )
             {
-                (void) mivarput1( file->cdfid, file->dim_ids[d], mindex,
-                                  NC_DOUBLE, MI_SIGNED, &dim_value );
+             /*   (void) mivarput1( file->cdfid, file->dim_ids[d], mindex,
+                                  NC_DOUBLE, MI_SIGNED, &dim_value );*/
             }
         }
 
+      /*
         file->minc_icv = miicv_create();
 
         (void) miicv_setint( file->minc_icv, MI_ICV_TYPE,
@@ -957,8 +913,7 @@ static  VIO_Status  check_minc_output_variables(
                               NC_DOUBLE, MI_SIGNED, &file->image_range[0] );
             (void) mivarput1( file->cdfid, file->max_id, &start_index,
                               NC_DOUBLE, MI_SIGNED, &file->image_range[1] );
-        }
-        ncopts = NC_VERBOSE | NC_FATAL;
+        }*/
     }
 
     return( VIO_OK );
@@ -1025,7 +980,7 @@ VIOAPI  VIO_Status  output_minc_hyperslab(
     long             long_file_start[VIO_MAX_DIMENSIONS];
     long             long_file_count[VIO_MAX_DIMENSIONS];
     void             *void_ptr;
-    VIO_BOOL          direct_from_array, non_full_size_found;
+    VIO_BOOL         direct_from_array, non_full_size_found;
     int              tmp_ind, tmp_sizes[VIO_MAX_DIMENSIONS];
     int              array_indices[VIO_MAX_DIMENSIONS];
     int              array_counts[MAX_VAR_DIMS];
@@ -1115,12 +1070,13 @@ VIOAPI  VIO_Status  output_minc_hyperslab(
     }
 
     /*--- output the data to the file */
-
+/*
     if( miicv_put( file->minc_icv, long_file_start, long_file_count,
                    void_ptr ) == MI_ERROR )
         status = VIO_ERROR;
     else
-        status = VIO_OK;
+        status = VIO_OK;*/
+    /*TODO: write out data using minc2 api*/
 
     if( !direct_from_array )
         delete_multidim_array( &buffer_array );
@@ -1180,7 +1136,6 @@ static  void  output_slab(
             volume_start[ind] = 0;
     }
 
-#ifdef HAVE_MINC1    
     if( volume->is_cached_volume )
     {
         /*--- must make a temporary hyperslab array to contain the volume */
@@ -1256,25 +1211,17 @@ static  void  output_slab(
     }
     else
     {
-#endif /*HAVE_MINC1*/
         GET_MULTIDIM_PTR( array_data_ptr, volume->array,
                           volume_start[0], volume_start[1], volume_start[2],
                           volume_start[3], volume_start[4] );
         get_volume_sizes( volume, volume_sizes );
 
-#ifdef HAVE_MINC1        
-        (void) output_minc_hyperslab( file, get_volume_data_type(volume),
+        output_minc_hyperslab( file, get_volume_data_type(volume),
                                       get_volume_n_dimensions(volume),
                                       volume_sizes, array_data_ptr,
                                       to_volume,
                                       int_file_start, int_file_count );
-#else /*HAVE_MINC1*/        
-        /*TODO: implement MINC2 api based reader*/
-#endif /*HAVE_MINC1*/        
-#ifdef HAVE_MINC1    
     }
-#endif /*HAVE_MINC1*/
-  
 }
 
 /* ----------------------------- MNI Header -----------------------------------
@@ -1651,17 +1598,14 @@ VIOAPI  VIO_Status  close_minc_output(
     {
         if( file->outputting_in_order && !file->entire_file_written )
         {
-            print_error( "Warning:  the MINC file has been " );
+            print_error( "Warning:  the MINC2 file has been " );
             print_error( "closed without writing part of it.\n");
         }
 
-        (void) miattputstr( file->cdfid, file->img_var_id, MIcomplete, MI_TRUE);
-
-        (void) miclose( file->cdfid );
-        (void) miicv_free( file->minc_icv );
-
         for_less( d, 0, file->n_file_dimensions )
             delete_string( file->dim_names[d] );
+      
+      /*TODO: close minc2 file*/
     }
 
     delete_string( file->filename );
@@ -1670,4 +1614,5 @@ VIOAPI  VIO_Status  close_minc_output(
 
     return( VIO_OK );
 }
+
 #endif /*HAVE_MINC2*/

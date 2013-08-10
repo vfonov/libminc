@@ -26,9 +26,9 @@
 
 static  VIO_BOOL  match_dimension_names(
     int               n_volume_dims,
-    VIO_STR            volume_dimension_names[],
+    VIO_STR           volume_dimension_names[],
     int               n_file_dims,
-    VIO_STR            file_dimension_names[],
+    VIO_STR           file_dimension_names[],
     int               to_volume_index[] );
 
 /* ----------------------------- MNI Header -----------------------------------
@@ -49,19 +49,16 @@ VIOAPI  int   get_minc2_file_n_dimensions(
 {
     int       dim_vars[MAX_VAR_DIMS];
     nc_type   file_datatype;
-    VIO_STR    expanded;
-
-    ncopts = NC_VERBOSE;
+    VIO_STR   expanded;
 
     expanded = expand_filename( filename );
 
 
     delete_string( expanded );
 
-    img_var = ncvarid( cdfid, MIimage );
+   /*TODO: use minc2 api*/
 
-
-    return( n_dims );
+    return( 0 );
 }
 
 /* ----------------------------- MNI Header -----------------------------------
@@ -461,14 +458,6 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
     }
                                         
     /* --- create the image conversion variable */
-
-    file->minc_icv = miicv_create();
-
-    (void) miicv_setint( file->minc_icv, MI_ICV_TYPE, (int) converted_type );
-    (void) miicv_setstr( file->minc_icv, MI_ICV_SIGN,
-                         converted_sign ? MI_SIGNED : MI_UNSIGNED );
-    (void) miicv_setint( file->minc_icv, MI_ICV_DO_NORM, TRUE );
-    (void) miicv_setint( file->minc_icv, MI_ICV_DO_FILLVALUE, TRUE );
 
     get_volume_voxel_range( volume, &valid_range[0], &valid_range[1] );
     range_specified = (valid_range[0] < valid_range[1]);
