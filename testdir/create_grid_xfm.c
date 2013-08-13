@@ -1,3 +1,8 @@
+#if HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+
 /* Create a grid transform from an existing MINC volume.
  */
 

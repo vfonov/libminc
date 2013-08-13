@@ -327,8 +327,8 @@ VIOAPI  Minc_file  initialize_minc2_output(
     int                 volume_sizes[VIO_MAX_DIMENSIONS];
     int                 n_volume_dims;
     int                 d, vol_index, n_range_dims;
-    static  VIO_STR      default_dim_names[] = { MIzspace, MIyspace, MIxspace };
-    VIO_STR              *vol_dimension_names;
+    static  VIO_STR     default_dim_names[] = { MIzspace, MIyspace, MIxspace };
+    VIO_STR             *vol_dimension_names;
     minc_output_options default_options;
 
     if( options == (minc_output_options *) NULL )
@@ -388,17 +388,6 @@ VIOAPI  Minc_file  initialize_minc2_output(
     file->src_img_var = MI_ERROR;
 
     file->filename = expand_filename( filename );
-
-    if( volume_to_attach->is_cached_volume &&
-        volume_to_attach->cache.output_file_is_open &&
-        equal_strings( volume_to_attach->cache.output_filename, file->filename))
-    {
-        file->ignoring_because_cached = TRUE;
-#ifdef HAVE_MINC1
-        flush_volume_cache( volume_to_attach );
-#endif /*HAVE_MINC1*/        
-        return( file );
-    }
 
     /*--- find correspondence between volume dimensions and file dimensions */
 
@@ -563,7 +552,7 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_minc2_file(
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : copy_auxiliary_data_from_open_minc_file
+@NAME       : copy_auxiliary_data_from_open_minc2_file
 @INPUT      : file
               src_cdfid
               history_string
@@ -579,8 +568,8 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_minc2_file(
 ---------------------------------------------------------------------------- */
 
 VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
-    Minc_file   file,
-    int         src_cdfid,
+    Minc_file    file,
+    int          src_cdfid,
     VIO_STR      history_string )
 {
     int     src_img_var, varid, n_excluded, excluded_vars[10];
@@ -597,9 +586,6 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
                                   MIzfrequency,
                                   MIvector_dimension
                                };
-
-    if( file->ignoring_because_cached )
-        return( VIO_OK );
 
     if( file->end_def_done )
     {
@@ -654,7 +640,6 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
 
     if( status == VIO_OK )
     {
-
         /* Set info for copying image attributes. Unset afterwards, just
            to be safe. */
         file->src_cdfid = src_cdfid;
@@ -696,16 +681,13 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
                                            concating to non-existent history
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_Status  add_minc_history(
-    Minc_file   file,
+VIOAPI  VIO_Status  add_minc2_history(
+    Minc_file    file,
     VIO_STR      history_string )
 {
     int      old_att_length;
     nc_type  datatype;
     VIO_STR   new_history;
-
-    if( file->ignoring_because_cached )
-        return( VIO_OK );
 
     if( file->end_def_done )
     {
@@ -813,7 +795,7 @@ static  VIO_Status  get_dimension_ordering(
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : check_minc_output_variables
+@NAME       : check_minc2_output_variables
 @INPUT      : file
 @OUTPUT     : 
 @RETURNS    : 
@@ -827,7 +809,7 @@ static  VIO_Status  get_dimension_ordering(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-static  VIO_Status  check_minc_output_variables(
+static  VIO_Status  check_minc2_output_variables(
     Minc_file   file )
 {
     int               d, axis;
@@ -920,7 +902,7 @@ static  VIO_Status  check_minc_output_variables(
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : set_minc_output_random_order
+@NAME       : set_minc2_output_random_order
 @INPUT      : file
 @OUTPUT     : 
 @RETURNS    : 
@@ -933,12 +915,12 @@ static  VIO_Status  check_minc_output_variables(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_Status  set_minc_output_random_order(
+VIOAPI  VIO_Status  set_minc2_output_random_order(
     Minc_file   file )
 {
     VIO_Status  status;
 
-    status = check_minc_output_variables( file );
+    status = check_minc2_output_variables( file );
 
     file->outputting_in_order = FALSE;
 
@@ -946,7 +928,7 @@ VIOAPI  VIO_Status  set_minc_output_random_order(
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : output_minc_hyperslab
+@NAME       : output_minc2_hyperslab
 @INPUT      : file
               data_type
               n_array_dims
@@ -965,7 +947,7 @@ VIOAPI  VIO_Status  set_minc_output_random_order(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_Status  output_minc_hyperslab(
+VIOAPI  VIO_Status  output_minc2_hyperslab(
     Minc_file           file,
     VIO_Data_types      data_type,
     int                 n_array_dims,
@@ -987,7 +969,7 @@ VIOAPI  VIO_Status  output_minc_hyperslab(
     VIO_Status       status;
     VIO_multidim_array buffer_array;
 
-    status = check_minc_output_variables( file );
+    status = check_minc2_output_variables( file );
 
     if( status != VIO_OK )
         return( status );
@@ -1204,7 +1186,7 @@ static  void  output_slab(
         /*--- output the temporary array */
 
         GET_MULTIDIM_PTR( array_data_ptr, array, 0, 0, 0, 0, 0 );
-        (void) output_minc_hyperslab( file, get_volume_data_type(volume),
+        output_minc2_hyperslab( file, get_volume_data_type(volume),
                                       n_slab_dims, slab_sizes, array_data_ptr,
                                       to_array, int_file_start, int_file_count);
         delete_multidim_array( &array );
@@ -1216,7 +1198,7 @@ static  void  output_slab(
                           volume_start[3], volume_start[4] );
         get_volume_sizes( volume, volume_sizes );
 
-        output_minc_hyperslab( file, get_volume_data_type(volume),
+        output_minc2_hyperslab( file, get_volume_data_type(volume),
                                       get_volume_n_dimensions(volume),
                                       volume_sizes, array_data_ptr,
                                       to_volume,
@@ -1225,7 +1207,7 @@ static  void  output_slab(
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : output_the_volume
+@NAME       : output_the_volume2
 @INPUT      : file
               volume
               volume_count
@@ -1239,8 +1221,7 @@ static  void  output_slab(
 @CREATED    : 1993            David MacDonald
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
-
-static  VIO_Status  output_the_volume(
+static  VIO_Status  output_the_volume2(
     Minc_file   file,
     VIO_Volume  volume,
     int         volume_count[],
@@ -1259,7 +1240,7 @@ static  VIO_Status  output_the_volume(
     VIO_BOOL           increment;
     VIO_progress_struct   progress;
 
-    status = check_minc_output_variables( file );
+    status = check_minc2_output_variables( file );
 
     if( status != VIO_OK )
         return( status );
@@ -1302,7 +1283,7 @@ static  VIO_Status  output_the_volume(
             if( volume_count[vol_index] < 0 ||
                 volume_count[vol_index] > sizes[vol_index] )
             {
-                print_error( "output_the_volume: invalid volume count.\n" );
+                print_error( "output_the_volume2: invalid volume count.\n" );
                 print_error( "    count[%d] = %d\n",
                        vol_index, volume_count[vol_index] );
                 return( VIO_ERROR );
@@ -1318,7 +1299,7 @@ static  VIO_Status  output_the_volume(
         if( file_start[d] < 0 || file_start[d] + (long) this_count >
             file->sizes_in_file[d] )
         {
-            print_error( "output_the_volume:  invalid minc file position.\n" );
+            print_error( "output_the_volume2:  invalid minc file position.\n" );
             print_error( "    start[%d] = %d     count[%d] = %d\n", d, file_start[d],
                       d, this_count );
             return( VIO_ERROR );
@@ -1363,16 +1344,18 @@ static  VIO_Status  output_the_volume(
         for_less( r, 0, n_ranges )
             image_range[r] = real_min;
 
-        (void) mivarput( file->cdfid, file->min_id,
+        /*
+        mivarput( file->cdfid, file->min_id,
                          range_start, range_count,
-                         NC_DOUBLE, MI_UNSIGNED, (void *) image_range );
+                         NC_DOUBLE, MI_UNSIGNED, (void *) image_range );*/
 
         for_less( r, 0, n_ranges )
             image_range[r] = real_max;
 
-        (void) mivarput( file->cdfid, file->max_id,
+        /*
+        mivarput( file->cdfid, file->max_id,
                          range_start, range_count,
-                         NC_DOUBLE, MI_UNSIGNED, (void *) image_range );
+                         NC_DOUBLE, MI_UNSIGNED, (void *) image_range );*/
 
         FREE( image_range );
     }
@@ -1390,15 +1373,8 @@ static  VIO_Status  output_the_volume(
       count[d] = 1;
       file_indices[d] = file_start[d];
       if( to_volume_index[d] != INVALID_AXIS ) {
-        if( MI_MAX_VAR_BUFFER_SIZE > volume_count[to_volume_index[d]] * slab_size * unit_size 
-            && n_steps == 1 ) {
-          count[d] = volume_count[to_volume_index[d]];
-          file->n_slab_dims++;  /* integral number of complete dimensions */
-        } else {
-          count[d] = MIN( volume_count[to_volume_index[d]], 
-                          (size_t)( MI_MAX_VAR_BUFFER_SIZE / ( slab_size * unit_size ) ) );
-          n_steps *= (int)( ( volume_count[to_volume_index[d]] + count[d] - 1 ) / count[d] );
-        }
+        count[d] = volume_count[to_volume_index[d]];
+        file->n_slab_dims++;  /* integral number of complete dimensions */
         slab_size *= count[d];
       }
     }
@@ -1426,7 +1402,7 @@ static  VIO_Status  output_the_volume(
           local_count[d] = MIN( volume_count[vol_index] - file_indices[d], count[d] );
         }
 
-        output_slab( file, volume, to_volume_index, file_indices, local_count );
+        output_slab2( file, volume, to_volume_index, file_indices, local_count );
 
         /*--- increment the file index dimensions which correspond
               for the next slab to write to output */
@@ -1486,22 +1462,19 @@ static  VIO_Status  output_the_volume(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_Status  output_volume_to_minc_file_position(
+VIOAPI  VIO_Status  output_volume_to_minc2_file_position(
     Minc_file   file,
     VIO_Volume  volume,
     int         volume_count[],
     long        file_start[] )
 {
-    if( file->ignoring_because_cached )
-        return( VIO_OK );
-
     file->outputting_in_order = FALSE;
 
-    return( output_the_volume( file, volume, volume_count, file_start ) );
+    return( output_the_volume2( file, volume, volume_count, file_start ) );
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : output_minc_volume
+@NAME       : output_minc2_volume
 @INPUT      : file
 @OUTPUT     : 
 @RETURNS    : VIO_OK or VIO_ERROR
@@ -1513,14 +1486,11 @@ VIOAPI  VIO_Status  output_volume_to_minc_file_position(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_Status  output_minc_volume(
+VIOAPI  VIO_Status  output_minc2_volume(
     Minc_file   file )
 {
     int        d, volume_count[VIO_MAX_DIMENSIONS];
     VIO_BOOL    increment;
-
-    if( file->ignoring_because_cached )
-        return( VIO_OK );
 
     /*--- check number of volumes written */
 
@@ -1533,13 +1503,13 @@ VIOAPI  VIO_Status  output_minc_volume(
         file->indices[d] >= file->sizes_in_file[d] )
     {
         print_error(
-             "output_minc_volume: attempted to write too many subvolumes.\n");
+             "output_minc2_volume: attempted to write too many subvolumes.\n");
         return( VIO_ERROR );
     }
 
     get_volume_sizes( file->volume, volume_count );
 
-    if( output_the_volume( file, file->volume, volume_count,
+    if( output_the_volume2( file, file->volume, volume_count,
                            file->indices ) != VIO_OK )
         return( VIO_ERROR );
 
@@ -1583,7 +1553,7 @@ VIOAPI  VIO_Status  output_minc_volume(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_Status  close_minc_output(
+VIOAPI  VIO_Status  close_minc2_output(
     Minc_file   file )
 {
     int    d;

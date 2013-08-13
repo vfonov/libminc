@@ -31,122 +31,114 @@ static  VIO_BOOL  match_dimension_names(
     VIO_STR           file_dimension_names[],
     int               to_volume_index[] );
 
-/* ----------------------------- MNI Header -----------------------------------
-@NAME       : get_minc_file_n_dimensions
-@INPUT      : filename
-@OUTPUT     : 
-@RETURNS    : n_dims
-@DESCRIPTION: Returns the number of dimensions in the minc file.
-@METHOD     : 
-@GLOBALS    : 
-@CALLS      : 
-@CREATED    : Nov. 4, 1995    David MacDonald
-@MODIFIED   : 
----------------------------------------------------------------------------- */
-
-VIOAPI  int   get_minc2_file_n_dimensions(
-    VIO_STR   filename )
-{
-    int       dim_vars[MAX_VAR_DIMS];
-    nc_type   file_datatype;
-    VIO_STR   expanded;
-
-    expanded = expand_filename( filename );
-
-
-    delete_string( expanded );
-
-   /*TODO: use minc2 api*/
-
-    return( 0 );
-}
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : initialize_minc_input_from_minc_id
+@NAME       : initialize_minc_input_from_minc2_id
 @INPUT      : minc_id
               volume
               options
 @OUTPUT     : 
 @RETURNS    : Minc_file
-@DESCRIPTION: Initializes input of volumes from an already opened MINC file.
+@DESCRIPTION: Initializes input of volumes from an already opened MINC2 file.
 @METHOD     : 
 @GLOBALS    : 
 @CALLS      : 
-@CREATED    : 1993            David MacDonald
-@MODIFIED   : Nov. 15, 1996   D. MacDonald - added handling of space type
-@MODIFIED   : May  20, 1997   D. MacDonald - removed float arithmetic in
-                                             transformations and made volumes
-                                             store starts/steps/dircos
 ---------------------------------------------------------------------------- */
 
-VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
-    int                  minc_id,
+VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
+    mihandle_t           minc_id,
     VIO_Volume           volume,
     minc_input_options   *options )
 {
     minc_file_struct    *file;
     int                 dim_vars[MAX_VAR_DIMS], n_vol_dims;
     int                 i, slab_size, prev_sizes[MAX_VAR_DIMS];
-    nc_type             prev_nc_type;
-    VIO_BOOL             different;
-    VIO_BOOL             range_specified;
+    mitype_t            prev_minc_type;
+    VIO_BOOL            different;
+    VIO_BOOL            range_specified;
     double              valid_range[2];
     long                long_size;
-    VIO_BOOL             converted_sign, space_type_consensus;
-    nc_type             converted_type;
+    VIO_BOOL            converted_sign, space_type_consensus;
+    mitype_t            converted_minc_type;
     char                signed_flag[MI_MAX_ATTSTR_LEN+1], *ptr;
-    char                dim_name[MI_MAX_ATTSTR_LEN+1];
+    char                *dim_name;
     char                prev_space_type[MI_MAX_ATTSTR_LEN+1];
     char                space_type[MI_MAX_ATTSTR_LEN+1];
-    nc_type             file_datatype;
+    mitype_t            file_datatype;
     int                 sizes[MAX_VAR_DIMS];
     double              file_separations[MAX_VAR_DIMS];
-    VIO_Real                volume_separations[MAX_VAR_DIMS];
-    VIO_Real                volume_starts[MAX_VAR_DIMS];
-    VIO_Real                voxel_zero;
+    VIO_Real            volume_separations[MAX_VAR_DIMS];
+    VIO_Real            volume_starts[MAX_VAR_DIMS];
+    VIO_Real            voxel_zero;
     double              start_position[MAX_VAR_DIMS];
     double              dir_cosines[MAX_VAR_DIMS][MI_NUM_SPACE_DIMS];
     double              tmp_cosines[MI_NUM_SPACE_DIMS];
-    VIO_BOOL             spatial_dim_flags[MAX_VAR_DIMS];
+    VIO_BOOL            spatial_dim_flags[MAX_VAR_DIMS];
+    
+    midimhandle_t       file_dims[MAX_VAR_DIMS];
+    misize_t            dimension_size[MAX_VAR_DIMS];
+    double              file_step[MAX_VAR_DIMS];
+    double              file_start[MAX_VAR_DIMS];
+    
     double              real_min, real_max;
     int                 d, dimvar, which_valid_axis, axis;
     int                 spatial_axis_indices[MAX_VAR_DIMS];
     minc_input_options  default_options;
-    VIO_BOOL             no_volume_data_type;
+    VIO_BOOL            no_volume_data_type;
     char                spacing_type[MI_MAX_ATTSTR_LEN+1];
     double              *irr_starts[MAX_VAR_DIMS];
     double              *irr_widths[MAX_VAR_DIMS];
+    double              volume_min=0.0,volume_max=1.0;
+    double              valid_min,valid_max;
+    
+    miboolean_t         slice_scaling_flag=0;
+    miboolean_t         global_scaling_flag=0;
 
     ALLOC( file, 1 );
 
-    file->cdfid = minc_id;
+    file->cdfid = 0;
+    file->minc2id=minc_id;
     file->file_is_being_read = TRUE;
     file->volume = volume;
 
     if( options == (minc_input_options *) NULL )
     {
-        set_default_minc_input_options( &default_options );
-        set_default_minc_input_options( &file->original_input_options );
-        options = &default_options;
-    }
-    else
-        file->original_input_options = *options;
+      set_default_minc_input_options( &default_options );
+      set_default_minc_input_options( &file->original_input_options );
+      options = &default_options;
+    } else
+      file->original_input_options = *options;
 
     get_volume_sizes( volume, prev_sizes );
-    prev_nc_type = volume->nc_data_type;
+    prev_minc_type = get_volume_minc2_data_type(volume);
 
-    /* --- find the image variable */
-
-    file->img_var = ncvarid( file->cdfid, MIimage );
-
-    ncvarinq( file->cdfid, file->img_var, (char *) NULL, &file_datatype,
-              &file->n_file_dimensions, dim_vars, (int *) NULL );
-
+    miget_data_type(file->minc2id, &file_datatype);
+    miget_volume_valid_range(file->minc2id,&valid_max,&valid_min);
+    
+    miget_slice_scaling_flag(file->minc2id, &slice_scaling_flag);
+    
+    if( !slice_scaling_flag )
+    {
+      miget_volume_range(file->minc2id,&volume_max,&volume_min);
+      global_scaling_flag=!(volume_min == valid_min && volume_max == valid_max);
+    }
+    
+    miget_volume_dimension_count(file->minc2id, MI_DIMCLASS_ANY, MI_DIMATTR_ALL, 
+                                 &file->n_file_dimensions);
+    
+    miget_volume_dimensions(file->minc2id, MI_DIMCLASS_ANY, MI_DIMATTR_ALL, 
+                            MI_DIMORDER_FILE, file->n_file_dimensions,
+                            file_dims);
+    
+    miget_dimension_sizes(file_dims, file->n_file_dimensions, dimension_size);
+    miget_dimension_separations(file_dims, MI_ORDER_FILE, file->n_file_dimensions, file_step);
+    miget_dimension_starts(file_dims, MI_ORDER_FILE, file->n_file_dimensions, file_start);
+    
     for_less( d, 0, file->n_file_dimensions )
     {
-        (void) ncdiminq( file->cdfid, dim_vars[d], dim_name, &long_size );
-        file->dim_names[d] = create_string( dim_name );
-        file->sizes_in_file[d] = long_size;
+      miget_dimension_name(file_dims[i], &dim_name);
+      file->dim_names[d] = create_string( dim_name );
+      file->sizes_in_file[d] = dimension_size[i];
     }
 
     file->converting_to_colour = FALSE;
@@ -160,27 +152,25 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
             file->sizes_in_file[file->n_file_dimensions-1] <=
             (long) options->max_dimension_size_for_colour_data )
         {
-            for_less( i, 0, 4 )
+          for_less( i, 0, 4 )
+          {
+            file->rgba_indices[i] = options->rgba_indices[i];
+
+            if( (long) options->rgba_indices[i] >=
+                file->sizes_in_file[file->n_file_dimensions-1] )
             {
-                file->rgba_indices[i] = options->rgba_indices[i];
-
-                if( (long) options->rgba_indices[i] >=
-                    file->sizes_in_file[file->n_file_dimensions-1] )
-                {
-                    file->rgba_indices[i] = -1;
-                    if( i != 3 )
-                        print_error( "Warning: rgba indices out of range.\n" );
-                }
+              file->rgba_indices[i] = -1;
+              if( i != 3 )
+                  print_error( "Warning: rgba indices out of range.\n" );
             }
+          }
 
-            set_volume_type( volume, NC_INT, FALSE, 0.0, 0.0 );
-            set_rgb_volume_flag( volume, TRUE );
-            file->converting_to_colour = TRUE;
-            delete_string( file->dim_names[file->n_file_dimensions-1] );
-            --file->n_file_dimensions;
-        }
-        else if( options->convert_vector_to_scalar_flag )
-        {
+          set_volume_type( volume, NC_INT, FALSE, 0.0, 0.0 );
+          set_rgb_volume_flag( volume, TRUE );
+          file->converting_to_colour = TRUE;
+          delete_string( file->dim_names[file->n_file_dimensions-1] );
+          --file->n_file_dimensions;
+        } else if( options->convert_vector_to_scalar_flag ) {
             delete_string( file->dim_names[file->n_file_dimensions-1] );
             --file->n_file_dimensions;
         }
@@ -227,12 +217,12 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
     }
 
     for_less( d, 0, n_vol_dims )
-        file->to_file_index[d] = INVALID_AXIS;
+      file->to_file_index[d] = INVALID_AXIS;
 
     for_less( d, 0, file->n_file_dimensions )
     {
-        if( file->to_volume_index[d] != INVALID_AXIS )
-            file->to_file_index[file->to_volume_index[d]] = d;
+      if( file->to_volume_index[d] != INVALID_AXIS )
+        file->to_file_index[file->to_volume_index[d]] = d;
     }
 
     file->n_volumes_in_file = 1;
@@ -243,34 +233,33 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
 
     for_less( d, 0, VIO_N_DIMENSIONS )
     {
-        volume->spatial_axes[d] = INVALID_AXIS;
-        file->spatial_axes[d] = INVALID_AXIS;
+      volume->spatial_axes[d] = INVALID_AXIS;
+      file->spatial_axes[d] = INVALID_AXIS;
     }
 
     for_less( d, 0, file->n_file_dimensions )
     {
-        if( convert_dim_name_to_spatial_axis( file->dim_names[d], &axis ) )
+      if( convert_dim_name_to_spatial_axis( file->dim_names[d], &axis ) )
+      {
+        spatial_axis_indices[d] = axis;
+        file->spatial_axes[axis] = d;
+      } else
+        spatial_axis_indices[d] = INVALID_AXIS;
+
+      spatial_dim_flags[d] = (spatial_axis_indices[d] != INVALID_AXIS);
+
+      if( file->to_volume_index[d] != INVALID_AXIS )
+      {
+        file->valid_file_axes[which_valid_axis] = d;
+
+        if( spatial_dim_flags[d] )
         {
-            spatial_axis_indices[d] = axis;
-            file->spatial_axes[axis] = d;
+          volume->spatial_axes[spatial_axis_indices[d]] =
+                                  file->to_volume_index[d];
         }
-        else
-            spatial_axis_indices[d] = INVALID_AXIS;
 
-        spatial_dim_flags[d] = (spatial_axis_indices[d] != INVALID_AXIS);
-
-        if( file->to_volume_index[d] != INVALID_AXIS )
-        {
-            file->valid_file_axes[which_valid_axis] = d;
-
-            if( spatial_dim_flags[d] )
-            {
-                volume->spatial_axes[spatial_axis_indices[d]] =
-                                        file->to_volume_index[d];
-            }
-
-            ++which_valid_axis;
-        }
+        ++which_valid_axis;
+      }
     }
 
     /* --- get the spatial axis info, slice separation, start pos, etc. */
@@ -280,116 +269,77 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
 
     for_less( d, 0, file->n_file_dimensions )
     {
-        file_separations[d] = 1.0;
-        start_position[d] = 0.0;
+      file_separations[d] = 1.0;
+      start_position[d] = 0.0;
 
-        irr_starts[d] = NULL;
-        irr_widths[d] = NULL;
+      irr_starts[d] = NULL;
+      irr_widths[d] = NULL;
 
-        if( spatial_dim_flags[d] )
+      if( spatial_dim_flags[d] )
+      {
+          dir_cosines[d][0] = 0.0;
+          dir_cosines[d][1] = 0.0;
+          dir_cosines[d][2] = 0.0;
+          dir_cosines[d][spatial_axis_indices[d]] = 1.0;
+      }
+
+      file_separations[d]=file_step[d];
+
+      if( spatial_dim_flags[d] )
+      {
+        start_position[d]=file_start[d];
+
+        miget_dimension_cosines(file_dims[d],tmp_cosines);
+        dir_cosines[d][0] = tmp_cosines[0];
+        dir_cosines[d][1] = tmp_cosines[1];
+        dir_cosines[d][2] = tmp_cosines[2];
+
+      } else if (!strcmp(MItime, file->dim_names[d])) {
+        miboolean_t sampling_flag;
+        /* For the moment this is implemented for time dimensions
+          * only.
+          */
+        miget_dimension_sampling_flag(file_dims[d],&sampling_flag);
+        if (!sampling_flag) 
         {
-            dir_cosines[d][0] = 0.0;
-            dir_cosines[d][1] = 0.0;
-            dir_cosines[d][2] = 0.0;
-            dir_cosines[d][spatial_axis_indices[d]] = 1.0;
-        }
+          int i;
 
-        dimvar = ncvarid( file->cdfid, file->dim_names[d] );
-        if( dimvar != MI_ERROR )
+          irr_starts[d] = malloc(sizeof(VIO_Real) * file->sizes_in_file[d]);
+          irr_widths[d] = malloc(sizeof(VIO_Real) * file->sizes_in_file[d]);
+
+          
+          miget_dimension_widths(file_dims[d],MI_ORDER_FILE,(misize_t)file->sizes_in_file[d],0,irr_widths[d]);
+          
+          /*TODO: figure out how to do it in MINC2 API, right now it is not obvious*/
+          irr_starts[d][0] = file_start[d];
+          for (i = 1; i < file->sizes_in_file[d]; i++) 
+          {
+              irr_starts[d][i] = irr_starts[d][i-1]+irr_widths[d][i-1];
+          }
+        } else {
+            start_position[d]=file_start[d];
+        }
+      }
+        
+
+      if( file->to_volume_index[d] == INVALID_AXIS )
+      {
+        file->n_volumes_in_file *= (int) file->sizes_in_file[d];
+      }
+      else
+      {
+        sizes[file->to_volume_index[d]] = (int) file->sizes_in_file[d];
+        volume_separations[file->to_volume_index[d]] =
+                                      file_separations[d];
+
+        if( file->to_volume_index[d] != INVALID_AXIS )
         {
-            (void) miattget1( file->cdfid, dimvar, MIstep, NC_DOUBLE,
-                              (void *) (&file_separations[d]) );
-
-            if( spatial_dim_flags[d] )
-            {
-                if( miattget1( file->cdfid, dimvar, MIstart, NC_DOUBLE,
-                               (void *) (&start_position[d]) ) == MI_ERROR )
-                    start_position[d] = 0.0;
-
-                if( miattget( file->cdfid, dimvar, MIdirection_cosines,
-                                 NC_DOUBLE, MI_NUM_SPACE_DIMS,
-                                 (void *) tmp_cosines, (int *) NULL )
-                     != MI_ERROR )
-                {
-                    dir_cosines[d][0] = tmp_cosines[0];
-                    dir_cosines[d][1] = tmp_cosines[1];
-                    dir_cosines[d][2] = tmp_cosines[2];
-                }
-
-                ptr = miattgetstr( file->cdfid, dimvar, MIspacetype,
-                                    MI_MAX_ATTSTR_LEN+1, space_type );
-
-                if( ptr != NULL )
-                {
-                    if( string_length( prev_space_type ) > 0 &&
-                        string_length( space_type ) > 0 &&
-                        !equal_strings( prev_space_type, space_type ) )
-                    {
-                        space_type_consensus = FALSE;
-                    }
-
-                    if( string_length( space_type ) > 0 )
-                        (void) strcpy( prev_space_type, space_type );
-                }
-            }
-            else if (!strcmp(MItime, file->dim_names[d])) {
-                /* For the moment this is implemented for time dimensions
-                 * only.
-                 */
-                miattgetstr(file->cdfid, dimvar, MIspacing,
-                            MI_MAX_ATTSTR_LEN+1, spacing_type);
-                if (!strcmp(spacing_type, MI_IRREGULAR)) {
-                    long start[1];
-                    long count[1];
-                    int i;
-
-                    irr_starts[d] = malloc(sizeof(VIO_Real) * file->sizes_in_file[d]);
-                    irr_widths[d] = malloc(sizeof(VIO_Real) * file->sizes_in_file[d]);
-
-                    start[0] = 0;
-                    count[0] = file->sizes_in_file[d];
-
-                    mivarget(file->cdfid, dimvar, start, count,
-                             NC_DOUBLE, MI_SIGNED, irr_starts[d]);
-
-                    dimvar = ncvarid(file->cdfid, MItime_width);
-                    if (dimvar < 0) {
-                        for (i = 0; i < count[0]; i++) {
-                            irr_widths[d][i] = file_separations[d];
-                        }
-                    }
-                    else {
-                        mivarget(file->cdfid, dimvar, start, count,
-                                 NC_DOUBLE, MI_SIGNED, irr_widths[d]);
-                    }
-                }
-                else {
-                    if( miattget1(file->cdfid, dimvar, MIstart, NC_DOUBLE,
-                                  (void *) (&start_position[d]) ) == MI_ERROR )
-                        start_position[d] = 0.0;
-                }
-            }
+            volume_starts[file->to_volume_index[d]] = start_position[d];
+            set_volume_direction_unit_cosine( volume,
+                            file->to_volume_index[d], dir_cosines[d] );
         }
-
-        if( file->to_volume_index[d] == INVALID_AXIS )
-        {
-            file->n_volumes_in_file *= (int) file->sizes_in_file[d];
-        }
-        else
-        {
-            sizes[file->to_volume_index[d]] = (int) file->sizes_in_file[d];
-            volume_separations[file->to_volume_index[d]] =
-                                          file_separations[d];
-
-            if( file->to_volume_index[d] != INVALID_AXIS )
-            {
-                volume_starts[file->to_volume_index[d]] = start_position[d];
-                set_volume_direction_unit_cosine( volume,
-                                file->to_volume_index[d], dir_cosines[d] );
-            }
-
-        }
-    }
+      }
+  }
 
     /* --- create the world transform stored in the volume */
 
@@ -409,29 +359,16 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
 
     if( file->converting_to_colour )
     {
-        converted_type = NC_FLOAT;
-        converted_sign = FALSE;
+        converted_minc_type = MI_TYPE_FLOAT ;
     }
     else
     {
         no_volume_data_type = (get_volume_data_type(volume) == VIO_NO_DATA_TYPE);
         if( no_volume_data_type )     /* --- use type of file */
         {
-            if( miattgetstr( file->cdfid, file->img_var, MIsigntype,
-                             MI_MAX_ATTSTR_LEN, signed_flag ) != NULL )
-            {
-                converted_sign = equal_strings( signed_flag, MI_SIGNED );
-            }
-            else
-                converted_sign = file_datatype != NC_BYTE;
-    
-            converted_type = file_datatype;
-            set_volume_type( volume, converted_type, converted_sign, 0.0, 0.0 );
+            set_volume_type2( volume, file_datatype, 0.0, 0.0 );
         }
-        else                                        /* --- use specified type */
-        {
-            converted_type = get_volume_nc_data_type( volume, &converted_sign );
-        }
+        converted_minc_type = get_volume_minc2_data_type( volume );
     }
 
     set_volume_sizes( volume, sizes );
@@ -458,7 +395,6 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
     }
                                         
     /* --- create the image conversion variable */
-
     get_volume_voxel_range( volume, &valid_range[0], &valid_range[1] );
     range_specified = (valid_range[0] < valid_range[1]);
 
@@ -473,10 +409,8 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
     }
     else if( no_volume_data_type )
     {
-        if (miget_valid_range( file->cdfid, file->img_var, 
-                               valid_range) == MI_ERROR) {
-           valid_range[0] = valid_range[1] = 0.0;
-        }
+      valid_range[0]=valid_min;
+      valid_range[1]=valid_max;
     }
 
     if( !file->converting_to_colour &&
@@ -487,41 +421,16 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
 
     if( !file->converting_to_colour )
     {
-        get_volume_voxel_range( volume, &valid_range[0], &valid_range[1] );
-
-        (void) miicv_setdbl( file->minc_icv, MI_ICV_VALID_MIN, valid_range[0]);
-        (void) miicv_setdbl( file->minc_icv, MI_ICV_VALID_MAX, valid_range[1]);
     }
     else
     {
-        (void) miicv_setdbl( file->minc_icv, MI_ICV_VALID_MIN, 0.0 );
-        (void) miicv_setdbl( file->minc_icv, MI_ICV_VALID_MAX, 1.0 );
-    }
-
-    if (options->user_real_range[0] < options->user_real_range[1]) {
-       (void) miicv_setint( file->minc_icv, MI_ICV_USER_NORM, TRUE );
-       (void) miicv_setdbl( file->minc_icv, MI_ICV_IMAGE_MIN,
-                            options->user_real_range[0] );
-       (void) miicv_setdbl( file->minc_icv, MI_ICV_IMAGE_MAX,
-                            options->user_real_range[1] );
+      /*TODO: figure out what it means in MINC2 world*/
     }
 
     if( options->convert_vector_to_scalar_flag && !file->converting_to_colour )
     {
-        (void) miicv_setint( file->minc_icv, MI_ICV_DO_DIM_CONV, TRUE );
-        (void) miicv_setint( file->minc_icv, MI_ICV_DO_SCALAR, TRUE );
-        (void) miicv_setint( file->minc_icv, MI_ICV_XDIM_DIR, FALSE );
-        (void) miicv_setint( file->minc_icv, MI_ICV_YDIM_DIR, FALSE );
-        (void) miicv_setint( file->minc_icv, MI_ICV_ZDIM_DIR, FALSE );
-        (void) miicv_setint( file->minc_icv, MI_ICV_KEEP_ASPECT, FALSE );
+      /*TODO: figure out what it means in MINC2 world*/
     }
-
-    (void) miicv_attach( file->minc_icv, file->cdfid, file->img_var );
-
-    /* --- compute the mapping to real values */
-
-    (void) miicv_inqdbl( file->minc_icv, MI_ICV_NORM_MIN, &real_min );
-    (void) miicv_inqdbl( file->minc_icv, MI_ICV_NORM_MAX, &real_max );
 
     if( !file->converting_to_colour )
         set_volume_real_range( volume, real_min, real_max );
@@ -531,8 +440,7 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
 
     if( options->promote_invalid_to_zero_flag )
     {
-        (void) miicv_detach( file->minc_icv );
-
+        /*TODO: figure out what it means in MINC2 world*/
         if( !file->converting_to_colour )
         {
             if( real_min == real_max )
@@ -547,21 +455,13 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
                              (valid_range[1] - valid_range[0]) *
                              (0.0 - real_min) / (real_max - real_min);
             }
-
-            (void) miicv_setdbl( file->minc_icv, MI_ICV_FILLVALUE, voxel_zero );
         }
-        else
-            (void) miicv_setdbl( file->minc_icv, MI_ICV_FILLVALUE, 0.0 );
-
-        (void) miicv_attach( file->minc_icv, file->cdfid, file->img_var );
     }
 
     for_less( d, 0, file->n_file_dimensions )
         file->indices[d] = 0;
 
     file->end_volume_flag = FALSE;
-
-    ncopts = NC_VERBOSE | NC_FATAL;
 
     /* --- decide how many full dimensions to read in at a time 
        to max out the read/write buffer and make it like the 
@@ -570,18 +470,11 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
     file->n_slab_dims = 0;
     slab_size = 1;
     int unit_size = get_type_size( get_volume_data_type(volume) );
-    int full_dim = 1;
 
     for( d = file->n_file_dimensions-1; d >= 0; d-- ) {
       if( file->to_volume_index[d] != INVALID_AXIS ) {
-        if( MI_MAX_VAR_BUFFER_SIZE > file->sizes_in_file[d] * slab_size * unit_size && full_dim ) {
           slab_size *= file->sizes_in_file[d];
           file->n_slab_dims++;  /* integral number of complete dimensions */
-        } else {
-          slab_size *= MIN( file->sizes_in_file[d],
-                            (size_t)( MI_MAX_VAR_BUFFER_SIZE / ( slab_size * unit_size ) ) );
-          full_dim = 0;
-        }
       }
     }
 
@@ -594,17 +487,17 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
             different = TRUE;
     }
 
-    if( prev_nc_type != converted_type )
+    if( prev_minc_type != converted_minc_type )
         different = TRUE;
 
-    if( different && volume_is_alloced( volume ) && !volume_is_cached(volume) )
+    if( different && volume_is_alloced( volume )  )
         free_volume_data( volume );
 
     return( file );
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : initialize_minc_input
+@NAME       : initialize_minc2_input
 @INPUT      : filename
               volume
 @OUTPUT     : 
@@ -625,53 +518,29 @@ VIOAPI  Minc_file  initialize_minc2_input(
     VIO_Volume            volume,
     minc_input_options   *options )
 {
-    Minc_file    file;
-    int          minc_id;
+    Minc_file     file;
     VIO_STR       expanded;
-
-    ncopts = 0;
+    mihandle_t    minc_id;
 
     expanded = expand_filename( filename );
 
-    minc_id = miopen( expanded, NC_NOWRITE );
-
-    if( minc_id == MI_ERROR )
+  if ( miopen_volume(expanded, MI2_OPEN_READ, &minc_id) < 0 )
     {
+    // Error opening the volume
         print_error( "Error: opening MINC file \"%s\".\n", expanded );
         return( (Minc_file) 0 );
     }
 
-    file = initialize_minc_input_from_minc_id( minc_id, volume, options );
+    file = initialize_minc_input_from_minc2_id( minc_id, volume, options );
 
     if( file == (Minc_file) NULL )
-        (void) miclose( minc_id );
+        miclose_volume( minc_id );
     else
         file->filename = create_string( expanded );
 
     delete_string( expanded );
 
     return( file );
-}
-
-/* ----------------------------- MNI Header -----------------------------------
-@NAME       : get_n_input_volumes
-@INPUT      : file
-@OUTPUT     : 
-@RETURNS    : number of input volumes
-@DESCRIPTION: After initializing the file input with a specified volume,
-              the user calls this function to decide how many volumes are
-              stored in the file.
-@METHOD     : 
-@GLOBALS    : 
-@CALLS      : 
-@CREATED    : June, 1993           David MacDonald
-@MODIFIED   : 
----------------------------------------------------------------------------- */
-
-VIOAPI  int  get_n_input_volumes(
-    Minc_file  file )
-{
-    return( file->n_volumes_in_file );
 }
 
 /* ----------------------------- MNI Header -----------------------------------
@@ -698,9 +567,9 @@ VIOAPI  VIO_Status  close_minc2_input(
         return( VIO_ERROR );
     }
 
-    (void) miclose( file->cdfid );
-    (void) miicv_free( file->minc_icv );
+    miclose_volume( file->minc2id );
 
+    
     for_less( d, 0, file->n_file_dimensions )
         delete_string( file->dim_names[d] );
 
@@ -732,7 +601,7 @@ VIOAPI  VIO_Status  close_minc2_input(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_Status  input_minc_hyperslab(
+VIOAPI  VIO_Status   input_minc2_hyperslab(
     Minc_file        file,
     VIO_Data_types   data_type,
     int              n_array_dims,
@@ -742,16 +611,16 @@ VIOAPI  VIO_Status  input_minc_hyperslab(
     int              start[],
     int              count[] )
 {
-    VIO_Status           status;
+    VIO_Status       status;
     int              ind, expected_ind, file_ind, d, i, dim;
     int              size0, size1, size2, size3, size4;
     int              n_tmp_dims, n_file_dims;
     void             *void_ptr;
-    VIO_BOOL          direct_to_array, non_full_size_found;
+    VIO_BOOL         direct_to_array, non_full_size_found;
     int              tmp_ind, tmp_sizes[MAX_VAR_DIMS];
     int              vol1_indices[VIO_MAX_DIMENSIONS];
     int              v[VIO_MAX_DIMENSIONS], voxel[VIO_MAX_DIMENSIONS];
-    long             used_start[MAX_VAR_DIMS], used_count[MAX_VAR_DIMS];
+    misize_t         used_start[MAX_VAR_DIMS], used_count[MAX_VAR_DIMS];
     VIO_Real             rgb[4];
     VIO_Colour           colour;
     VIO_multidim_array   buffer_array, rgb_array;
@@ -769,77 +638,77 @@ VIOAPI  VIO_Status  input_minc_hyperslab(
 
     for( file_ind = n_file_dims-1;  file_ind >= 0;  --file_ind )
     {
-        used_start[file_ind] = (long) start[file_ind];
-        used_count[file_ind] = (long) count[file_ind];
+      used_start[file_ind] = (misize_t) start[file_ind];
+      used_count[file_ind] = (misize_t) count[file_ind];
 
-        ind = to_array[file_ind];
+      ind = to_array[file_ind];
 
-        if( ind != INVALID_AXIS )
+      if( ind != INVALID_AXIS )
+      {
+        if( !non_full_size_found &&
+            (long) count[file_ind] < file->sizes_in_file[file_ind] )
+            non_full_size_found = TRUE;
+        else if( non_full_size_found && count[file_ind] > 1 )
+            direct_to_array = FALSE;
+
+        if( count[file_ind] > 1 && ind != expected_ind )
+            direct_to_array = FALSE;
+
+        if( count[file_ind] != 1 || file->sizes_in_file[file_ind] == 1 )
         {
-            if( !non_full_size_found &&
-                (long) count[file_ind] < file->sizes_in_file[file_ind] )
-                non_full_size_found = TRUE;
-            else if( non_full_size_found && count[file_ind] > 1 )
-                direct_to_array = FALSE;
-
-            if( count[file_ind] > 1 && ind != expected_ind )
-                direct_to_array = FALSE;
-
-            if( count[file_ind] != 1 || file->sizes_in_file[file_ind] == 1 )
-            {
-                tmp_sizes[tmp_ind] = count[file_ind];
-                vol1_indices[tmp_ind] = ind;
-                --tmp_ind;
-            }
-
-            --expected_ind;
+            tmp_sizes[tmp_ind] = count[file_ind];
+            vol1_indices[tmp_ind] = ind;
+            --tmp_ind;
         }
+
+          --expected_ind;
+      }
     }
 
     if( !direct_to_array || file->converting_to_colour )
     {
-        /*--- make a temporary buffer array, so that there is a continuous
-              chunk */
+      /*--- make a temporary buffer array, so that there is a continuous
+            chunk */
 
-        n_tmp_dims = n_file_dims - tmp_ind - 1;
-        for_less( dim, 0, n_tmp_dims )
-        {
-            tmp_sizes[dim] = tmp_sizes[dim+tmp_ind+1];
-            vol1_indices[dim] = vol1_indices[dim+tmp_ind+1];
-        }
+      n_tmp_dims = n_file_dims - tmp_ind - 1;
+      for_less( dim, 0, n_tmp_dims )
+      {
+          tmp_sizes[dim] = tmp_sizes[dim+tmp_ind+1];
+          vol1_indices[dim] = vol1_indices[dim+tmp_ind+1];
+      }
 
-        create_multidim_array( &buffer_array, n_tmp_dims, tmp_sizes, data_type);
+      create_multidim_array( &buffer_array, n_tmp_dims, tmp_sizes, data_type);
 
-        if( file->converting_to_colour )
-        {
-            used_start[n_file_dims] = 0;
-            used_count[n_file_dims] = file->sizes_in_file[n_file_dims];
-            tmp_sizes[n_tmp_dims] = (int) used_count[n_file_dims];
+      if( file->converting_to_colour )
+      {
+          used_start[n_file_dims] = 0;
+          used_count[n_file_dims] = file->sizes_in_file[n_file_dims];
+          tmp_sizes[n_tmp_dims] = (int) used_count[n_file_dims];
 
-            create_multidim_array( &rgb_array, n_tmp_dims+1, tmp_sizes, VIO_FLOAT );
+          create_multidim_array( &rgb_array, n_tmp_dims+1, tmp_sizes, VIO_FLOAT );
 
-            GET_MULTIDIM_PTR( void_ptr, rgb_array, 0, 0, 0, 0, 0 );
-        }
-        else
-        {
-            GET_MULTIDIM_PTR( void_ptr, buffer_array, 0, 0, 0, 0, 0 );
-        }
+          GET_MULTIDIM_PTR( void_ptr, rgb_array, 0, 0, 0, 0, 0 );
+      }
+      else
+      {
+          GET_MULTIDIM_PTR( void_ptr, buffer_array, 0, 0, 0, 0, 0 );
+      }
     }
     else
     {
         void_ptr = array_data_ptr;
     }
 
-    if( miicv_get( file->minc_icv, used_start, used_count, void_ptr ) ==
-                                                                 MI_ERROR )
+    if( miget_hyperslab_with_icv(file->minc2id,
+         get_volume_minc2_data_type(file->volume),
+         used_start,used_count,void_ptr)<0 )
     {
         status = VIO_ERROR;
         if( file->converting_to_colour )
             delete_multidim_array( &rgb_array );
         if( !direct_to_array || file->converting_to_colour )
             delete_multidim_array( &buffer_array );
-    }
-    else
+    } else
         status = VIO_OK;
 
     if( status == VIO_OK && (!direct_to_array || file->converting_to_colour) )
@@ -847,7 +716,7 @@ VIOAPI  VIO_Status  input_minc_hyperslab(
         if( file->converting_to_colour )
         {
             for_less( dim, n_tmp_dims, VIO_MAX_DIMENSIONS )
-                tmp_sizes[dim] = 1;           
+                tmp_sizes[dim] = 1;
 
             size0 = tmp_sizes[0];
             size1 = tmp_sizes[1];
@@ -951,7 +820,7 @@ static  void  input_slab(
                       volume_start[0], volume_start[1], volume_start[2],
                       volume_start[3], volume_start[4] );
 
-    (void) input_minc_hyperslab( file,
+    input_minc2_hyperslab( file,
                                  get_multidim_data_type(&volume->array),
                                  get_multidim_n_dimensions(&volume->array),
                                  array_sizes, array_data_ptr, to_volume,
@@ -959,7 +828,7 @@ static  void  input_slab(
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : input_more_minc_file
+@NAME       : input_more_minc2_file
 @INPUT      : file
 @OUTPUT     : fraction_done        - amount of file read
 @RETURNS    : TRUE if volume has more left to read
@@ -973,7 +842,7 @@ static  void  input_slab(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_BOOL  input_more_minc_file(
+VIOAPI  VIO_BOOL  input_more_minc2_file(
     Minc_file   file,
     VIO_Real        *fraction_done )
 {
@@ -993,87 +862,73 @@ VIOAPI  VIO_BOOL  input_more_minc_file(
     if( !volume_is_alloced( volume ) )
     {
         alloc_volume_data( volume );
-        if( volume->is_cached_volume )
-        {
-            open_cache_volume_input_file( &volume->cache, volume,
-                                          file->filename,
-                                          &file->original_input_options );
-        }
         if( !volume_is_alloced( volume ) ) return( FALSE );
     }
 
-    if( volume->is_cached_volume )
-    {
-        *fraction_done = 1.0;
-        file->end_volume_flag = TRUE;
-    }
-    else
-    {
-        /* --- set the counts for reading, actually these will be the same
-               every time */
+      /* --- set the counts for reading, actually these will be the same
+              every time */
 
-        for_less( ind, 0, file->n_file_dimensions )
-            count[ind] = 1;
+      for_less( ind, 0, file->n_file_dimensions )
+          count[ind] = 1;
 
-        n_slab = 0;
+      n_slab = 0;
 
-        for( d = file->n_file_dimensions-1;
-             d >= 0 && n_slab < file->n_slab_dims;
-             --d )
-        {
-            if( file->to_volume_index[d] != INVALID_AXIS )
-            {
-                count[d] = file->sizes_in_file[d];
-                ++n_slab;
-            }
-        }
+      for( d = file->n_file_dimensions-1;
+            d >= 0 && n_slab < file->n_slab_dims;
+            --d )
+      {
+          if( file->to_volume_index[d] != INVALID_AXIS )
+          {
+              count[d] = file->sizes_in_file[d];
+              ++n_slab;
+          }
+      }
 
-        input_slab( file, volume, file->to_volume_index, file->indices, count );
+      input_slab( file, volume, file->to_volume_index, file->indices, count );
 
-        /* --- advance to next slab */
+      /* --- advance to next slab */
 
-        increment = TRUE;
-        n_slab = 0;
-        total = 1;
-        n_done = 0;
+      increment = TRUE;
+      n_slab = 0;
+      total = 1;
+      n_done = 0;
 
-        for( d = file->n_file_dimensions-1;  d >= 0;  --d )
-        {
-            if( n_slab >= file->n_slab_dims &&
-                file->to_volume_index[d] != INVALID_AXIS )
-            {
-                if( increment )
-                {
-                    ++file->indices[d];
-                    if( file->indices[d] < file->sizes_in_file[d] )
-                        increment = FALSE;
-                    else
-                        file->indices[d] = 0;
-                }
-                n_done += total * (int) file->indices[d];
-                total *= (int) file->sizes_in_file[d];
-            }
+      for( d = file->n_file_dimensions-1;  d >= 0;  --d )
+      {
+          if( n_slab >= file->n_slab_dims &&
+              file->to_volume_index[d] != INVALID_AXIS )
+          {
+              if( increment )
+              {
+                  ++file->indices[d];
+                  if( file->indices[d] < file->sizes_in_file[d] )
+                      increment = FALSE;
+                  else
+                      file->indices[d] = 0;
+              }
+              n_done += total * (int) file->indices[d];
+              total *= (int) file->sizes_in_file[d];
+          }
 
-            if( file->to_volume_index[d] != INVALID_AXIS )
-                ++n_slab;
-        }
+          if( file->to_volume_index[d] != INVALID_AXIS )
+              ++n_slab;
+      }
 
-        if( increment )
-        {
-            *fraction_done = 1.0;
-            file->end_volume_flag = TRUE;
-        }
-        else
-        {
-            *fraction_done = (VIO_Real) n_done / (VIO_Real) total;
-        }
-    }
+      if( increment )
+      {
+          *fraction_done = 1.0;
+          file->end_volume_flag = TRUE;
+      }
+      else
+      {
+          *fraction_done = (VIO_Real) n_done / (VIO_Real) total;
+      }
 
     return( !file->end_volume_flag );
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : advance_input_volume
+@NAME       : advance_input_volume2
 @INPUT      : file
 @OUTPUT     : 
 @RETURNS    : TRUE if more volumes to read
@@ -1086,14 +941,15 @@ VIOAPI  VIO_BOOL  input_more_minc_file(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_BOOL  advance_input_volume(
+VIOAPI  VIO_BOOL  advance_input_volume2(
     Minc_file   file )
 {
-    int                 ind, c, axis;
+    int                     ind, c, axis;
     VIO_Real                voxel[VIO_MAX_DIMENSIONS], world_space[VIO_N_DIMENSIONS];
     VIO_Real                vol_world_space[VIO_N_DIMENSIONS];
     VIO_Transform           offset;
-    VIO_General_transform   offset_transform, new_transform;
+    VIO_General_transform   offset_transform;
+    VIO_General_transform   new_transform;
 
     ind = file->n_file_dimensions-1;
 
@@ -1148,12 +1004,6 @@ VIOAPI  VIO_BOOL  advance_input_volume(
                                    &offset_transform, &new_transform );
         set_voxel_to_world_transform( file->volume, &new_transform );
         delete_general_transform( &offset_transform );
-
-        /*--- update the volume if it is cached */
-
-        if( file->volume->is_cached_volume )
-            set_cache_volume_file_offset( &file->volume->cache, file->volume,
-                                          file->indices );
     }
     else
         file->end_volume_flag = TRUE;
@@ -1175,7 +1025,7 @@ VIOAPI  VIO_BOOL  advance_input_volume(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  void  reset_input_volume(
+VIOAPI  void  reset_input_volume2(
     Minc_file   file )
 {
     int   d;
@@ -1184,8 +1034,6 @@ VIOAPI  void  reset_input_volume(
         file->indices[d] = 0;
     file->end_volume_flag = FALSE;
 
-    set_cache_volume_file_offset( &file->volume->cache, file->volume,
-                                  file->indices );
 }
 
 /* ----------------------------- MNI Header -----------------------------------
@@ -1214,13 +1062,13 @@ VIOAPI  void  reset_input_volume(
 
 static  VIO_BOOL  match_dimension_names(
     int               n_volume_dims,
-    VIO_STR            volume_dimension_names[],
+    VIO_STR           volume_dimension_names[],
     int               n_file_dims,
-    VIO_STR            file_dimension_names[],
+    VIO_STR           file_dimension_names[],
     int               to_volume_index[] )
 {
-    int      i, j, iteration, n_matches, dummy;
-    int      to_file_index[VIO_MAX_DIMENSIONS];
+    int       i, j, iteration, n_matches, dummy;
+    int       to_file_index[VIO_MAX_DIMENSIONS];
     VIO_BOOL  match;
     VIO_BOOL  volume_dim_found[VIO_MAX_DIMENSIONS];
 
@@ -1258,8 +1106,7 @@ static  VIO_BOOL  match_dimension_names(
                                           file_dimension_names[j], &dummy );
                             break;
                         case 2:
-                            match = string_length(volume_dimension_names[i])
-                                        == 0;
+                            match = string_length(volume_dimension_names[i]) == 0;
                             break;
                         }
 
@@ -1281,8 +1128,7 @@ static  VIO_BOOL  match_dimension_names(
     {
         for_less( i, 0, n_volume_dims )
         {
-            if( equal_strings( volume_dimension_names[i],
-                               ANY_SPATIAL_DIMENSION ) ||
+            if( equal_strings( volume_dimension_names[i], ANY_SPATIAL_DIMENSION ) ||
                 string_length(volume_dimension_names[i]) == 0 )
             {
                 replace_string( &volume_dimension_names[i],
@@ -1290,7 +1136,6 @@ static  VIO_BOOL  match_dimension_names(
             }
         }
     }
-
     return( n_matches == n_volume_dims );
 }
 

@@ -1781,21 +1781,21 @@ VIOAPI  void  delete_volume_cache(
 
 VIOAPI  void  set_volume_cache_block_sizes(
     VIO_Volume    volume,
-    int       block_sizes[] );
+    int           block_sizes[] );
 
 VIOAPI  void  set_volume_cache_size(
     VIO_Volume    volume,
-    int       max_memory_bytes );
+    int           max_memory_bytes );
 
 VIOAPI  void  set_cache_output_volume_parameters(
-    VIO_Volume                      volume,
-    VIO_STR                      filename,
+    VIO_Volume                  volume,
+    VIO_STR                     filename,
     nc_type                     file_nc_data_type,
     VIO_BOOL                    file_signed_flag,
-    VIO_Real                        file_voxel_min,
-    VIO_Real                        file_voxel_max,
-    VIO_STR                      original_filename,
-    VIO_STR                      history,
+    VIO_Real                    file_voxel_min,
+    VIO_Real                    file_voxel_max,
+    VIO_STR                     original_filename,
+    VIO_STR                     history,
     minc_output_options         *options )
 ;
 
@@ -1849,29 +1849,38 @@ VIOAPI  VIO_BOOL convert_dim_name_to_spatial_axis(
 
 VIOAPI   VIO_Volume   create_volume(
     int         n_dimensions,
-    VIO_STR      dimension_names[],
+    VIO_STR     dimension_names[],
     nc_type     nc_data_type,
     VIO_BOOL    signed_flag,
-    VIO_Real        voxel_min,
-    VIO_Real        voxel_max );
+    VIO_Real    voxel_min,
+    VIO_Real    voxel_max );
 
 VIOAPI  void  set_volume_type(
-    VIO_Volume       volume,
+    VIO_Volume   volume,
     nc_type      nc_data_type,
     VIO_BOOL     signed_flag,
-    VIO_Real         voxel_min,
-    VIO_Real         voxel_max );
+    VIO_Real     voxel_min,
+    VIO_Real     voxel_max );
+
+VIOAPI  void  set_volume_type2(
+    VIO_Volume   volume,
+    mitype_t     minc_data_type,
+    VIO_Real     voxel_min,
+    VIO_Real     voxel_max );
 
 VIOAPI  nc_type  get_volume_nc_data_type(
-    VIO_Volume       volume,
+    VIO_Volume   volume,
     VIO_BOOL     *signed_flag );
+
+VIOAPI  mitype_t  get_volume_minc2_data_type(
+    VIO_Volume   volume);
 
 VIOAPI  VIO_Data_types  get_volume_data_type(
     VIO_Volume       volume );
 
 VIOAPI  void  set_rgb_volume_flag(
     VIO_Volume   volume,
-    VIO_BOOL flag );
+    VIO_BOOL     flag );
 
 VIOAPI  VIO_BOOL is_an_rgb_volume(
     VIO_Volume   volume );
@@ -1886,7 +1895,7 @@ VIOAPI  void  free_volume_data(
     VIO_Volume   volume );
 
 VIOAPI  void  delete_volume(
-    VIO_Volume volume );
+    VIO_Volume   volume );
 
 VIOAPI  int  get_volume_n_dimensions(
     VIO_Volume volume );
@@ -2091,15 +2100,15 @@ VIOAPI  VIO_Volume   copy_volume_definition_no_alloc(
     VIO_Volume   volume,
     nc_type  nc_data_type,
     VIO_BOOL signed_flag,
-    VIO_Real     voxel_min,
-    VIO_Real     voxel_max );
+    VIO_Real voxel_min,
+    VIO_Real voxel_max );
 
 VIOAPI  VIO_Volume   copy_volume_definition(
     VIO_Volume   volume,
     nc_type  nc_data_type,
     VIO_BOOL signed_flag,
-    VIO_Real     voxel_min,
-    VIO_Real     voxel_max );
+    VIO_Real voxel_min,
+    VIO_Real voxel_max );
 
 VIOAPI  VIO_Volume  copy_volume(
     VIO_Volume   volume );

@@ -142,17 +142,17 @@ VIOAPI  VIO_BOOL  convert_dim_name_to_spatial_axis(
 
 VIOAPI   VIO_Volume   create_volume(
     int         n_dimensions,
-    VIO_STR      dimension_names[],
+    VIO_STR     dimension_names[],
     nc_type     nc_data_type,
-    VIO_BOOL     signed_flag,
-    VIO_Real        voxel_min,
-    VIO_Real        voxel_max )
+    VIO_BOOL    signed_flag,
+    VIO_Real    voxel_min,
+    VIO_Real    voxel_max )
 {
     int             i, axis, sizes[VIO_MAX_DIMENSIONS];
-    VIO_Status          status;
-    VIO_STR          name;
+    VIO_Status      status;
+    VIO_STR         name;
     volume_struct   *volume;
-    VIO_Transform       identity;
+    VIO_Transform   identity;
 
     status = VIO_OK;
 
@@ -239,11 +239,11 @@ VIOAPI   VIO_Volume   create_volume(
 ---------------------------------------------------------------------------- */
 
 VIOAPI  void  set_volume_type(
-    VIO_Volume       volume,
+    VIO_Volume   volume,
     nc_type      nc_data_type,
-    VIO_BOOL      signed_flag,
-    VIO_Real         voxel_min,
-    VIO_Real         voxel_max )
+    VIO_BOOL     signed_flag,
+    VIO_Real     voxel_min,
+    VIO_Real     voxel_max )
 {
     VIO_Data_types      data_type;
 
@@ -284,12 +284,89 @@ VIOAPI  void  set_volume_type(
 
         set_multidim_data_type( &volume->array, data_type );
         volume->signed_flag = signed_flag;
-
+        
         set_volume_voxel_range( volume, voxel_min, voxel_max );
     }
 
     volume->nc_data_type = nc_data_type;
 }
+
+
+/* ----------------------------- MNI Header -----------------------------------
+@NAME       : set_volume_type
+@INPUT      : volume
+              minc2_data_type
+              voxel_min
+              voxel_max
+@OUTPUT     : 
+@RETURNS    : 
+@DESCRIPTION: Sets the data type and valid range of the volume.
+@METHOD     : 
+@GLOBALS    : 
+@CALLS      : 
+@CREATED    : 2013            Vladimir FONOV
+@MODIFIED   : 
+---------------------------------------------------------------------------- */
+
+VIOAPI  void  set_volume_type2(
+    VIO_Volume   volume,
+    mitype_t     minc2_data_type,
+    VIO_Real     voxel_min,
+    VIO_Real     voxel_max )
+{
+    VIO_Data_types      data_type;
+    VIO_BOOL signed_flag=0;
+
+    if( minc2_data_type != MI_ORIGINAL_TYPE )
+    {
+        switch( minc2_data_type )
+        {
+        case  MI_TYPE_BYTE:
+                data_type = VIO_SIGNED_BYTE;
+                signed_flag=1;
+                volume->nc_data_type=NC_BYTE;
+                break;
+        case MI_TYPE_UBYTE:
+                data_type = VIO_UNSIGNED_BYTE;
+                volume->nc_data_type=NC_BYTE;
+                break;
+        case  MI_TYPE_SHORT:
+                data_type = VIO_SIGNED_SHORT;
+                signed_flag=1;
+                volume->nc_data_type=NC_SHORT;
+                break;
+        case MI_TYPE_USHORT:
+                data_type = VIO_UNSIGNED_SHORT;
+                volume->nc_data_type=NC_SHORT;
+                break;
+        case  MI_TYPE_INT:
+                data_type = VIO_SIGNED_INT;
+                volume->nc_data_type=NC_INT;
+                signed_flag=1;
+                break;
+        case MI_TYPE_UINT:
+                data_type = VIO_UNSIGNED_INT;
+                volume->nc_data_type=NC_INT;
+                break;
+        case  MI_TYPE_FLOAT:
+            data_type = VIO_FLOAT;
+            volume->nc_data_type=NC_FLOAT;
+            signed_flag=1;
+            break;
+        default:
+        case  MI_TYPE_DOUBLE:
+            data_type = VIO_DOUBLE;
+            signed_flag=1;
+            volume->nc_data_type=NC_DOUBLE;
+            break;
+        }
+
+        set_multidim_data_type( &volume->array, data_type );
+        volume->signed_flag = signed_flag;
+        set_volume_voxel_range( volume, voxel_min, voxel_max );
+    }
+}
+
 
 /* ----------------------------- MNI Header -----------------------------------
 @NAME       : get_volume_nc_data_type
@@ -306,12 +383,37 @@ VIOAPI  void  set_volume_type(
 ---------------------------------------------------------------------------- */
 
 VIOAPI  nc_type  get_volume_nc_data_type(
-    VIO_Volume       volume,
+    VIO_Volume    volume,
     VIO_BOOL      *signed_flag )
 {
     if( signed_flag != (VIO_BOOL *) NULL )
         *signed_flag = volume->signed_flag;
     return( volume->nc_data_type );
+}
+
+VIOAPI  mitype_t  get_volume_minc2_data_type(
+    VIO_Volume   volume)
+{
+  switch( get_multidim_data_type( &volume->array ) )
+  {
+        case  VIO_SIGNED_BYTE:
+          return MI_TYPE_BYTE;
+        case VIO_UNSIGNED_BYTE:
+          return MI_TYPE_UBYTE;
+        case VIO_SIGNED_SHORT:
+          return MI_TYPE_SHORT;
+        case VIO_UNSIGNED_SHORT:
+          return MI_TYPE_USHORT;
+        case VIO_SIGNED_INT:
+          return MI_TYPE_INT;
+        case VIO_UNSIGNED_INT:
+          return MI_TYPE_UINT;
+        case VIO_FLOAT:
+          return  MI_TYPE_FLOAT;
+        default:
+        case  VIO_DOUBLE:
+          return MI_TYPE_DOUBLE;
+  }
 }
 
 /* ----------------------------- MNI Header -----------------------------------

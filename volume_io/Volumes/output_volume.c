@@ -262,20 +262,20 @@ VIOAPI  VIO_Status   copy_volume_auxiliary_and_history(
     {
 #ifdef HAVE_MINC1
       status = copy_auxiliary_data_from_minc_file( minc_file,
-                                                     original_filename,
-                                                     history );
-#elseif HAVE_MINC2
-      /*TODO: add minc2 here*/
-      status = VIO_ERROR;
+                                                  original_filename,
+                                                  history );
+#elif defined HAVE_MINC2
+      status = copy_auxiliary_data_from_minc2_file( minc_file,
+                                                  original_filename,
+                                                  history );
 #endif       
     }
     else if( history != NULL )
     {
 #ifdef HAVE_MINC1
       status = add_minc_history( minc_file, history );
-#elseif HAVE_MINC2
-      /*TODO: add minc2 here*/
-      status = VIO_ERROR;
+#elif defined HAVE_MINC2
+      status = add_minc2_history( minc_file, history );
 #endif       
     }
     
@@ -358,6 +358,7 @@ VIOAPI  VIO_Status  output_modified_volume(
     {
         set_minc_output_use_volume_starts_and_steps_flag( &used_options, TRUE );
     }
+
 #ifdef HAVE_MINC1
     minc_file = initialize_minc_output( filename,
                                         n_dims, dim_names, sizes,
@@ -365,10 +366,15 @@ VIOAPI  VIO_Status  output_modified_volume(
                                         file_voxel_min, file_voxel_max,
                                         get_voxel_to_world_transform(volume),
                                         volume, &used_options );
-#elseif HAVE_MINC2
-    /*TODO: add minc2 here*/
-    minc_file = NULL;
-#endif 
+#elif defined HAVE_MINC2
+    minc_file = initialize_minc2_output( filename,
+                                        n_dims, dim_names, sizes,
+                                        file_nc_data_type, file_signed_flag,
+                                        file_voxel_min, file_voxel_max,
+                                        get_voxel_to_world_transform(volume),
+                                        volume, &used_options );
+#endif
+
     if( minc_file == NULL )
         return( VIO_ERROR );
 

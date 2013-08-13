@@ -21,7 +21,7 @@
 
 #ifdef HAVE_MINC1
 #include  <minc.h>
-#elseif HAVE_MINC2
+#elif defined HAVE_MINC2
 #include <minc2.h>
 #endif /*HAVE_MINC1*/
 
@@ -89,7 +89,7 @@ VIOAPI  VIO_Status  start_volume_input(
   if( !filename_extension_matches( expanded_filename, FREE_ENDING ) )
         input_info->file_format = MNC_FORMAT;
   else
-#elsif HAVE_MINC2
+#elif defined HAVE_MINC2
   if( !filename_extension_matches( expanded_filename, FREE_ENDING ) )
         input_info->file_format = MNC2_FORMAT;
   else

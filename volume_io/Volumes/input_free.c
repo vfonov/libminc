@@ -45,12 +45,12 @@ static  VIO_Status  input_slice(
 ---------------------------------------------------------------------------- */
 
 VIOAPI  VIO_Status  initialize_free_format_input(
-    VIO_STR               filename,
-    VIO_Volume               volume,
+    VIO_STR              filename,
+    VIO_Volume           volume,
     volume_input_struct  *volume_input )
 {
-    VIO_Status         status, file_status;
-    VIO_STR         volume_filename, abs_volume_filename, slice_filename;
+    VIO_Status     status, file_status;
+    VIO_STR        volume_filename, abs_volume_filename, slice_filename;
     int            sizes[VIO_N_DIMENSIONS];
     int            c, volume_byte_offset, int_size;
     int            n_bytes_per_voxel, min_value, max_value, i;
@@ -59,11 +59,11 @@ VIOAPI  VIO_Status  initialize_free_format_input(
     nc_type        desired_data_type;
     int            value;
     char           ch;
-    VIO_Real           file_separations[VIO_MAX_DIMENSIONS];
-    VIO_Real           volume_separations[VIO_MAX_DIMENSIONS];
-    VIO_Real           trans[VIO_N_DIMENSIONS];
+    VIO_Real       file_separations[VIO_MAX_DIMENSIONS];
+    VIO_Real       volume_separations[VIO_MAX_DIMENSIONS];
+    VIO_Real       trans[VIO_N_DIMENSIONS];
     FILE           *file;
-    VIO_BOOL        axis_valid;
+    VIO_BOOL       axis_valid;
     int            axis;
 
     status = VIO_OK;
