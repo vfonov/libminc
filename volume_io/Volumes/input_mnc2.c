@@ -620,7 +620,7 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  Minc_file  initialize_minc_input(
+VIOAPI  Minc_file  initialize_minc2_input(
     VIO_STR               filename,
     VIO_Volume            volume,
     minc_input_options   *options )
@@ -687,7 +687,7 @@ VIOAPI  int  get_n_input_volumes(
 @MODIFIED   : 
 ---------------------------------------------------------------------------- */
 
-VIOAPI  VIO_Status  close_minc_input(
+VIOAPI  VIO_Status  close_minc2_input(
     Minc_file   file )
 {
     int  d;

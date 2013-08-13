@@ -59,8 +59,8 @@ VIOAPI  VIO_Status  start_volume_input(
     volume_input_struct *input_info )
 {
     VIO_Status          status;
-    int             d;
-    VIO_STR          expanded_filename;
+    int                 d;
+    VIO_STR             expanded_filename;
 
     status = VIO_OK;
 
@@ -85,10 +85,16 @@ VIOAPI  VIO_Status  start_volume_input(
 
     expanded_filename = expand_filename( filename );
 
-    if( !filename_extension_matches( expanded_filename, FREE_ENDING ) )
+#ifdef HAVE_MINC1
+  if( !filename_extension_matches( expanded_filename, FREE_ENDING ) )
         input_info->file_format = MNC_FORMAT;
-    else
-        input_info->file_format = FREE_FORMAT;
+  else
+#elsif HAVE_MINC2
+  if( !filename_extension_matches( expanded_filename, FREE_ENDING ) )
+        input_info->file_format = MNC2_FORMAT;
+  else
+#endif
+      input_info->file_format = FREE_FORMAT;
 
     switch( input_info->file_format )
     {
@@ -113,11 +119,25 @@ VIOAPI  VIO_Status  start_volume_input(
         break;
 #endif /*HAVE_MINC1*/        
 #ifdef HAVE_MINC2
-        /*add minc2 here*/
+      case  MNC2_FORMAT:
+        input_info->minc_file = initialize_minc2_input( expanded_filename,
+                                                       *volume, options );
+        if( input_info->minc_file == (Minc_file) NULL )
+          status = VIO_ERROR;
+        else
+        {
+          for_less( d, 0, VIO_MAX_DIMENSIONS )
+          input_info->axis_index_from_file[d] = d;
+        }
+        break;
 #endif /*HAVE_MINC2*/
     case  FREE_FORMAT:
         status = initialize_free_format_input( expanded_filename,
                                                *volume, input_info );
+        break;
+      default:
+        /*Unsupported file format*/
+        status = VIO_ERROR;
         break;
     }
 
@@ -149,11 +169,12 @@ VIOAPI  void  delete_volume_input(
     case  MNC_FORMAT:
         close_minc_input( input_info->minc_file );
         break;
-#endif
+#endif /*HAVE_MINC1*/
 #ifdef HAVE_MINC2
-/*add minc2 here*/
+      case  MNC2_FORMAT:
+        close_minc2_input( input_info->minc_file );
+        break;
 #endif /*HAVE_MINC2*/
-        
     case  FREE_FORMAT:
         delete_free_format_input( input_info );
         break;
@@ -190,7 +211,10 @@ VIOAPI  VIO_BOOL  input_more_of_volume(
 #endif
         
 #ifdef HAVE_MINC2
-/*add minc2 here*/
+      case  MNC2_FORMAT:
+        more_to_do = input_more_minc2_file( input_info->minc_file,
+                                          fraction_done );
+        break;
 #endif /*HAVE_MINC2*/
         
     case  FREE_FORMAT:
@@ -219,7 +243,6 @@ VIOAPI  void  cancel_volume_input(
     volume_input_struct   *input_info )
 {
     delete_volume( volume );
-
     delete_volume_input( input_info );
 }
 
@@ -247,8 +270,8 @@ VIOAPI  VIO_Status  input_volume(
     VIO_Volume           *volume,
     minc_input_options   *options )
 {
-    VIO_Status               status;
-    VIO_Real                 amount_done;
+    VIO_Status           status;
+    VIO_Real             amount_done;
     volume_input_struct  input_info;
     VIO_progress_struct  progress;
     static const int     FACTOR = 1000;

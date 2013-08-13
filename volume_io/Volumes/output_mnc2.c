@@ -1254,7 +1254,7 @@ static  VIO_Status  output_the_volume(
     int               to_file_index[VIO_MAX_DIMENSIONS];
     long              file_indices[MAX_VAR_DIMS];
     long              count[MAX_VAR_DIMS];
-    VIO_Real              real_min, real_max;
+    VIO_Real           real_min, real_max;
     VIO_STR            *vol_dimension_names;
     VIO_BOOL           increment;
     VIO_progress_struct   progress;

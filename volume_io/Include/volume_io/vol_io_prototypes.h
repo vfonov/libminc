@@ -1301,27 +1301,35 @@ VIOAPI  void  delete_free_format_input(
     volume_input_struct   *volume_input );
 
 VIOAPI  VIO_BOOL input_more_free_format_file(
-    VIO_Volume                volume,
+    VIO_Volume            volume,
     volume_input_struct   *volume_input,
-    VIO_Real                  *fraction_done );
+    VIO_Real              *fraction_done );
 
 VIOAPI  int   get_minc_file_n_dimensions(
     VIO_STR   filename );
 
 VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
     int                  minc_id,
-    VIO_Volume               volume,
+    VIO_Volume           volume,
     minc_input_options   *options );
 
 VIOAPI  Minc_file  initialize_minc_input(
     VIO_STR               filename,
-    VIO_Volume               volume,
-    minc_input_options   *options );
+    VIO_Volume            volume,
+    minc_input_options    *options );
+
+VIOAPI  Minc_file  initialize_minc2_input(
+    VIO_STR               filename,
+    VIO_Volume            volume,
+    minc_input_options    *options );
 
 VIOAPI  int  get_n_input_volumes(
     Minc_file  file );
 
 VIOAPI  VIO_Status  close_minc_input(
+    Minc_file   file );
+
+VIOAPI  VIO_Status  close_minc2_input(
     Minc_file   file );
 
 VIOAPI  VIO_Status  input_minc_hyperslab(
@@ -1337,6 +1345,10 @@ VIOAPI  VIO_Status  input_minc_hyperslab(
 VIOAPI  VIO_BOOL input_more_minc_file(
     Minc_file   file,
     VIO_Real        *fraction_done );
+
+VIOAPI  VIO_BOOL input_more_minc2_file(
+                  Minc_file   file,
+                  VIO_Real        *fraction_done );
 
 VIOAPI  VIO_BOOL advance_input_volume(
     Minc_file   file );
@@ -1384,15 +1396,15 @@ VIOAPI  void  set_minc_input_user_real_range(
     double              maximum );
 
 VIOAPI  VIO_Status  start_volume_input(
-    VIO_STR               filename,
+    VIO_STR              filename,
     int                  n_dimensions,
-    VIO_STR               dim_names[],
+    VIO_STR              dim_names[],
     nc_type              volume_nc_data_type,
     VIO_BOOL             volume_signed_flag,
-    VIO_Real                 volume_voxel_min,
-    VIO_Real                 volume_voxel_max,
+    VIO_Real             volume_voxel_min,
+    VIO_Real             volume_voxel_max,
     VIO_BOOL             create_volume_flag,
-    VIO_Volume               *volume,
+    VIO_Volume           *volume,
     minc_input_options   *options,
     volume_input_struct  *input_info );
 
@@ -1400,24 +1412,24 @@ VIOAPI  void  delete_volume_input(
     volume_input_struct   *input_info );
 
 VIOAPI  VIO_BOOL input_more_of_volume(
-    VIO_Volume                volume,
+    VIO_Volume            volume,
     volume_input_struct   *input_info,
-    VIO_Real                  *fraction_done );
+    VIO_Real              *fraction_done );
 
 VIOAPI  void  cancel_volume_input(
-    VIO_Volume                volume,
+    VIO_Volume            volume,
     volume_input_struct   *input_info );
 
 VIOAPI  VIO_Status  input_volume(
-    VIO_STR               filename,
+    VIO_STR              filename,
     int                  n_dimensions,
-    VIO_STR               dim_names[],
+    VIO_STR              dim_names[],
     nc_type              volume_nc_data_type,
     VIO_BOOL             volume_signed_flag,
-    VIO_Real                 volume_voxel_min,
-    VIO_Real                 volume_voxel_max,
+    VIO_Real             volume_voxel_min,
+    VIO_Real             volume_voxel_max,
     VIO_BOOL             create_volume_flag,
-    VIO_Volume               *volume,
+    VIO_Volume           *volume,
     minc_input_options   *options );
 
 VIOAPI  Minc_file   get_volume_input_minc_file(
@@ -1554,7 +1566,7 @@ VIOAPI  void  delete_minc_output_options(
 VIOAPI  void  set_minc_output_dimensions_order(
     minc_output_options  *options,
     int                  n_dimensions,
-    VIO_STR               dimension_names[] );
+    VIO_STR              dimension_names[] );
 
 VIOAPI  void  set_minc_output_real_range(
     minc_output_options  *options,
@@ -1567,12 +1579,12 @@ VIOAPI  void  set_minc_output_use_volume_starts_and_steps_flag(
 
 VIOAPI  VIO_Status   get_file_dimension_names(
     VIO_STR   filename,
-    int      *n_dims,
+    int       *n_dims,
     VIO_STR   *dim_names[] );
 
 VIOAPI  VIO_STR  *create_output_dim_names(
-    VIO_Volume                volume,
-    VIO_STR                original_filename,
+    VIO_Volume            volume,
+    VIO_STR               original_filename,
     minc_output_options   *options,
     int                   file_sizes[] );
 
@@ -1583,29 +1595,29 @@ VIOAPI  VIO_Status   copy_volume_auxiliary_and_history(
     VIO_STR      history );
 
 VIOAPI  VIO_Status  output_modified_volume(
-    VIO_STR                filename,
+    VIO_STR               filename,
     nc_type               file_nc_data_type,
     VIO_BOOL              file_signed_flag,
-    VIO_Real                  file_voxel_min,
-    VIO_Real                  file_voxel_max,
-    VIO_Volume                volume,
-    VIO_STR                original_filename,
-    VIO_STR                history,
+    VIO_Real              file_voxel_min,
+    VIO_Real              file_voxel_max,
+    VIO_Volume            volume,
+    VIO_STR               original_filename,
+    VIO_STR               history,
     minc_output_options   *options );
 
 VIOAPI  VIO_Status  output_volume(
-    VIO_STR                filename,
+    VIO_STR               filename,
     nc_type               file_nc_data_type,
     VIO_BOOL              file_signed_flag,
-    VIO_Real                  file_voxel_min,
-    VIO_Real                  file_voxel_max,
-    VIO_Volume                volume,
-    VIO_STR                history,
+    VIO_Real              file_voxel_min,
+    VIO_Real              file_voxel_max,
+    VIO_Volume            volume,
+    VIO_STR               history,
     minc_output_options   *options );
 
 VIOAPI  void  convert_values_to_voxels(
     VIO_Volume   volume,
-    int      n_voxels,
+    int          n_voxels,
     VIO_Real     values[],
     VIO_Real     voxels[] );
 
