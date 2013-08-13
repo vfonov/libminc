@@ -382,10 +382,22 @@ VIOAPI  VIO_Status  output_modified_volume(
                                                 original_filename, history );
 
     if( status == VIO_OK )
+#ifdef HAVE_MINC1
         status = output_minc_volume( minc_file );
+#elif defined HAVE_MINC2
+        status = output_minc2_volume( minc_file );
+#else
+        print_error("Can't output file!");
+#endif
 
     if( status == VIO_OK )
+#ifdef HAVE_MINC1
         status = close_minc_output( minc_file );
+#elif defined HAVE_MINC2
+        status = close_minc2_output( minc_file );
+#else
+        print_error("Can't output file!");
+#endif
 
     delete_dimension_names( volume, dim_names );
 

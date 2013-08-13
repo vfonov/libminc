@@ -46,17 +46,16 @@ TARGET_LINK_LIBRARIES(test_xfm ${VOLUME_IO_LIBRARY} ${LIBMINC_LIBRARIES})
 ADD_EXECUTABLE(create_grid_xfm create_grid_xfm.c)
 TARGET_LINK_LIBRARIES(create_grid_xfm ${VOLUME_IO_LIBRARY} ${LIBMINC_LIBRARIES} m)
 
-
-ADD_TEST(create_grid_xfm create_grid_xfm)
+#ADD_TEST(create_grid_xfm create_grid_xfm)
 #ADD_TEST(test_speed test_speed)
 
 ADD_TEST(test_xfm_1 test_xfm 10000 ${CMAKE_CURRENT_SOURCE_DIR}/vio_xfm_test/t1.xfm)
 ADD_TEST(test_xfm_2 test_xfm 10000 ${CMAKE_CURRENT_SOURCE_DIR}/vio_xfm_test/t2.xfm)
 
-IF(HAVE_MINC1)
+#IF(HAVE_MINC1)
   # nonlnear transform test will fail without MINC1 
-  ADD_TEST(test_xfm_3 test_xfm 10000 ${CMAKE_CURRENT_SOURCE_DIR}/vio_xfm_test/t3.xfm 0.9)
-ENDIF(HAVE_MINC1)
+ADD_TEST(test_xfm_3 test_xfm 10000 ${CMAKE_CURRENT_SOURCE_DIR}/vio_xfm_test/t3.xfm 0.9)
+#ENDIF(HAVE_MINC1)
 
 
 #common tests

@@ -1308,6 +1308,9 @@ VIOAPI  VIO_BOOL input_more_free_format_file(
 VIOAPI  int   get_minc_file_n_dimensions(
     VIO_STR   filename );
 
+VIOAPI  int   get_minc2_file_n_dimensions(
+    VIO_STR   filename );
+
 VIOAPI  Minc_file  initialize_minc_input_from_minc_id(
     int                  minc_id,
     VIO_Volume           volume,
@@ -1514,7 +1517,25 @@ VIOAPI  Minc_file  initialize_minc_output(
     VIO_Volume             volume_to_attach,
     minc_output_options    *options );
 
+VIOAPI  Minc_file  initialize_minc2_output(
+    VIO_STR                filename,
+    int                    n_dimensions,
+    VIO_STR                dim_names[],
+    int                    sizes[],
+    nc_type                file_nc_data_type,
+    VIO_BOOL               file_signed_flag,
+    VIO_Real               file_voxel_min,
+    VIO_Real               file_voxel_max,
+    VIO_General_transform  *voxel_to_world_transform,
+    VIO_Volume             volume_to_attach,
+    minc_output_options    *options );
+
 VIOAPI  VIO_Status  copy_auxiliary_data_from_minc_file(
+    Minc_file    file,
+    VIO_STR      filename,
+    VIO_STR      history_string );
+
+VIOAPI  VIO_Status  copy_auxiliary_data_from_minc2_file(
     Minc_file    file,
     VIO_STR      filename,
     VIO_STR      history_string );
@@ -1524,7 +1545,16 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc_file(
     int          src_cdfid,
     VIO_STR      history_string );
 
+VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
+    Minc_file    file,
+    int          src_cdfid,
+    VIO_STR      history_string );
+
 VIOAPI  VIO_Status  add_minc_history(
+    Minc_file   file,
+    VIO_STR     history_string );
+
+VIOAPI  VIO_Status  add_minc2_history(
     Minc_file   file,
     VIO_STR     history_string );
 

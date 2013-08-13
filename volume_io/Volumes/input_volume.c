@@ -63,12 +63,19 @@ VIOAPI  VIO_Status  start_volume_input(
     VIO_STR             expanded_filename;
 
     status = VIO_OK;
+    
+    printf("start_volume_input filename=%s\n",filename);
 
     if( create_volume_flag || *volume == (VIO_Volume) NULL )
     {
         if( n_dimensions < 1 || n_dimensions > VIO_MAX_DIMENSIONS )
+#ifdef HAVE_MINC1
             n_dimensions = get_minc_file_n_dimensions( filename );
-
+#elif defined HAVE_MINC2
+            n_dimensions = get_minc2_file_n_dimensions( filename );
+#else
+            n_dimensions = 0;
+#endif
         if( n_dimensions < 1 )
             return( VIO_ERROR );
 

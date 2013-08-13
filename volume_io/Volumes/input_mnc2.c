@@ -136,9 +136,9 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
     
     for_less( d, 0, file->n_file_dimensions )
     {
-      miget_dimension_name(file_dims[i], &dim_name);
+      miget_dimension_name(file_dims[d], &dim_name);
       file->dim_names[d] = create_string( dim_name );
-      file->sizes_in_file[d] = dimension_size[i];
+      file->sizes_in_file[d] = dimension_size[d];
     }
 
     file->converting_to_colour = FALSE;
@@ -521,10 +521,10 @@ VIOAPI  Minc_file  initialize_minc2_input(
     Minc_file     file;
     VIO_STR       expanded;
     mihandle_t    minc_id;
-
+    
     expanded = expand_filename( filename );
 
-  if ( miopen_volume(expanded, MI2_OPEN_READ, &minc_id) < 0 )
+    if ( miopen_volume(expanded, MI2_OPEN_READ, &minc_id) < 0 )
     {
     // Error opening the volume
         print_error( "Error: opening MINC file \"%s\".\n", expanded );
@@ -1140,4 +1140,39 @@ static  VIO_BOOL  match_dimension_names(
 }
 
 
+VIOAPI  int   get_minc2_file_n_dimensions(
+    VIO_STR   filename )
+{
+    int        n_dims;
+    VIO_STR    expanded;
+    mihandle_t    minc_id;
+
+    expanded = expand_filename( filename );
+
+    if ( miopen_volume(expanded, MI2_OPEN_READ, &minc_id) < 0 )
+    {
+        print_error( "Error opening %s\n", expanded );
+
+        delete_string( expanded );
+
+        return -1 ;
+    }
+
+    
+    miget_volume_dimension_count(minc_id, MI_DIMCLASS_ANY, MI_DIMATTR_ALL, 
+                                 &n_dims);
+
+    
+    
+    delete_string( expanded );
+
+
+    miclose_volume( minc_id );
+
+    return( n_dims );
+}
+
 #endif /*HAVE_MINC2*/
+
+
+

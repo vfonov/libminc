@@ -636,7 +636,7 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
     status = VIO_OK;
 
     if( history_string != NULL )
-        status = add_minc_history( file, history_string );
+        status = add_minc2_history( file, history_string );
 
     if( status == VIO_OK )
     {
@@ -667,7 +667,7 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : add_minc_history
+@NAME       : add_minc2_history
 @INPUT      : file
               history_string
 @OUTPUT     : 
@@ -1067,7 +1067,7 @@ VIOAPI  VIO_Status  output_minc2_hyperslab(
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : output_slab
+@NAME       : output_slab2
 @INPUT      : file
               volume
               to_volume
@@ -1085,7 +1085,7 @@ VIOAPI  VIO_Status  output_minc2_hyperslab(
 @MODIFIED   : Sep  1, 1995    D. MacDonald - added cached volumes.
 ---------------------------------------------------------------------------- */
 
-static  void  output_slab(
+static  void  output_slab2(
     Minc_file   file,
     VIO_Volume  volume,
     int         to_volume[],
