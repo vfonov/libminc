@@ -368,6 +368,98 @@ VIOAPI  void  set_volume_type2(
 }
 
 
+VIOAPI mitype_t nc_type_to_minc2_type(
+    nc_type  nc_data_type,
+    VIO_BOOL signed_flag )
+{
+  if(nc_data_type==MI_ORIGINAL_TYPE)
+    return MI_ORIGINAL_TYPE;
+
+  if(signed_flag)
+  {
+    switch(nc_data_type)
+    {
+      case NC_BYTE:
+        return MI_TYPE_BYTE;
+      case NC_SHORT:
+        return MI_TYPE_SHORT;
+      case NC_INT:
+        return MI_TYPE_INT;
+      case NC_FLOAT:
+        return MI_TYPE_FLOAT;
+      default:
+      case NC_DOUBLE:
+        return MI_TYPE_DOUBLE;
+    }
+  } else {
+    switch(nc_data_type)
+    {
+      case NC_BYTE:
+        return MI_TYPE_UBYTE;
+      case NC_SHORT:
+        return MI_TYPE_USHORT;
+      case NC_INT:
+        return MI_TYPE_UINT;
+      case NC_FLOAT:
+        return MI_TYPE_FLOAT;
+      default:
+      case NC_DOUBLE:
+        return MI_TYPE_DOUBLE;
+    }
+  }
+}
+
+
+VIOAPI mitype_t vio_type_to_minc2_type(
+    VIO_Data_types  vio_data_type)
+{
+  switch( vio_data_type )
+  {
+        case  VIO_SIGNED_BYTE:
+          return MI_TYPE_BYTE;
+        case VIO_UNSIGNED_BYTE:
+          return MI_TYPE_UBYTE;
+        case VIO_SIGNED_SHORT:
+          return MI_TYPE_SHORT;
+        case VIO_UNSIGNED_SHORT:
+          return MI_TYPE_USHORT;
+        case VIO_SIGNED_INT:
+          return MI_TYPE_INT;
+        case VIO_UNSIGNED_INT:
+          return MI_TYPE_UINT;
+        case VIO_FLOAT:
+          return  MI_TYPE_FLOAT;
+        default:
+        case  VIO_DOUBLE:
+          return MI_TYPE_DOUBLE;
+  }
+}
+
+VIOAPI VIO_Data_types  minc2_type_to_vio_type(
+    mitype_t    minc_data_type)
+{
+  switch( minc_data_type )
+  {
+        case  MI_TYPE_BYTE:
+          return VIO_SIGNED_BYTE;
+        case MI_TYPE_UBYTE:
+          return VIO_UNSIGNED_BYTE;
+        case MI_TYPE_SHORT:
+          return VIO_SIGNED_SHORT;
+        case MI_TYPE_USHORT:
+          return VIO_UNSIGNED_SHORT;
+        case MI_TYPE_INT:
+          return VIO_SIGNED_INT;
+        case MI_TYPE_UINT:
+          return VIO_UNSIGNED_INT;
+        case MI_TYPE_FLOAT:
+          return  VIO_FLOAT;
+        default:
+        case  MI_TYPE_DOUBLE:
+          return VIO_DOUBLE;
+  }
+}
+
 /* ----------------------------- MNI Header -----------------------------------
 @NAME       : get_volume_nc_data_type
 @INPUT      : volume
@@ -394,26 +486,7 @@ VIOAPI  nc_type  get_volume_nc_data_type(
 VIOAPI  mitype_t  get_volume_minc2_data_type(
     VIO_Volume   volume)
 {
-  switch( get_multidim_data_type( &volume->array ) )
-  {
-        case  VIO_SIGNED_BYTE:
-          return MI_TYPE_BYTE;
-        case VIO_UNSIGNED_BYTE:
-          return MI_TYPE_UBYTE;
-        case VIO_SIGNED_SHORT:
-          return MI_TYPE_SHORT;
-        case VIO_UNSIGNED_SHORT:
-          return MI_TYPE_USHORT;
-        case VIO_SIGNED_INT:
-          return MI_TYPE_INT;
-        case VIO_UNSIGNED_INT:
-          return MI_TYPE_UINT;
-        case VIO_FLOAT:
-          return  MI_TYPE_FLOAT;
-        default:
-        case  VIO_DOUBLE:
-          return MI_TYPE_DOUBLE;
-  }
+  return vio_type_to_minc2_type( get_multidim_data_type( &volume->array ) );
 }
 
 /* ----------------------------- MNI Header -----------------------------------

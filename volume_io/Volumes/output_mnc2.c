@@ -27,12 +27,6 @@
 
 #define  UNITS           "mm"
 
-VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
-                                                             Minc_file   file,
-                                                             int         src_cdfid,
-                                                             VIO_STR      history_string );
-
-
 static  VIO_Status  get_dimension_ordering(
     int          n_vol_dims,
     VIO_STR      vol_dim_names[],
@@ -99,7 +93,9 @@ static  VIO_Status  output_world_transform(
     Minc_file               file,
     VIO_STR                 space_type,
     VIO_General_transform   *voxel_to_world_transform,
-    VIO_BOOL                use_volume_starts_and_steps_flag )
+    VIO_BOOL                use_volume_starts_and_steps_flag,
+    midimhandle_t           *minc_dimensions
+                                          )
 {
     double              step[MAX_VAR_DIMS];
     VIO_Real            start[MAX_VAR_DIMS];
@@ -183,7 +179,14 @@ static  VIO_Status  output_world_transform(
     {
         if( convert_dim_name_to_spatial_axis( file->dim_names[dim], &axis ) )
         {
-          /*TODO create MINC2 dimensions*/
+            miset_dimension_separation(minc_dimensions[dim],step[dim]);
+            miset_dimension_start(minc_dimensions[dim],start[dim]);
+            miset_dimension_apparent_voxel_order(minc_dimensions[dim],MI_POSITIVE);
+            
+            if( !is_default_direction_cosine( axis, dir_cosines[dim] ) )
+            {
+              miset_dimension_cosines(minc_dimensions[dim],dir_cosines[dim]);
+            }
         }
         else
             file->dim_ids[dim] = -1;
@@ -192,62 +195,6 @@ static  VIO_Status  output_world_transform(
     return( VIO_OK );
 }
 
-/* ----------------------------- MNI Header -----------------------------------
-@NAME       : create_image_variable
-@INPUT      : file
-@OUTPUT     : 
-@RETURNS    : 
-@DESCRIPTION: Defines the image variable in the output minc file. This 
-              should be done as the last thing before ending the header 
-              definition.
-@METHOD     : 
-@GLOBALS    : 
-@CALLS      : 
-@CREATED    : September 13, 2001    Peter Neelin
-@MODIFIED   : 
----------------------------------------------------------------------------- */
-
-static void create_image_variable(Minc_file file)
-{
-    /* Create the variable */
-/*    file->img_var_id = micreate_std_variable( file->cdfid, MIimage,
-                                              file->nc_data_type,
-                                              file->n_file_dimensions, 
-                                              file->image_dims );
-*/
-    /* Copy all attributes if required */
-    if( file->src_img_var != MI_ERROR )
-    {
-      /*
-        (void) micopy_all_atts( file->src_cdfid, file->src_img_var,
-                                file->cdfid, file->img_var_id );
-        (void) ncattdel( file->cdfid, file->img_var_id, MIvalid_max );
-        (void) ncattdel( file->cdfid, file->img_var_id, MIvalid_min );
-        (void) ncattdel( file->cdfid, file->img_var_id, MIvalid_range );
-*/
-    }
-
-/*    (void) miattputstr( file->cdfid, file->img_var_id, MIcomplete, MI_FALSE );
-
-    if( file->signed_flag )
-        (void) miattputstr( file->cdfid, file->img_var_id, MIsigntype,
-                            MI_SIGNED );
-    else
-        (void) miattputstr( file->cdfid, file->img_var_id, MIsigntype,
-                            MI_UNSIGNED );
-*/
-    /* --- put the valid voxel range */
-
-/*
-    if( file->valid_range[0] < file->valid_range[1] )
-    {
-
-        (void) miset_valid_range( file->cdfid, file->img_var_id, 
-                                  file->valid_range);
-
-    }
-*/
-}
 
 /* ----------------------------- MNI Header -----------------------------------
 @NAME       : end_file_def
@@ -280,7 +227,7 @@ static VIO_Status end_file_def(Minc_file file)
 }
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : initialize_minc_output
+@NAME       : initialize_minc2_output
 @INPUT      : filename
               n_dimensions
               dim_names
@@ -330,12 +277,26 @@ VIOAPI  Minc_file  initialize_minc2_output(
     static  VIO_STR     default_dim_names[] = { MIzspace, MIyspace, MIxspace };
     VIO_STR             *vol_dimension_names;
     minc_output_options default_options;
+    mitype_t            file_minc_datatype;
+    midimhandle_t       minc_dimensions[VIO_MAX_DIMENSIONS];
+    mivolumeprops_t     hprops;
+    
+    if( minew_volume_props(&hprops) < 0)
+    {
+      return NULL;
+    }
+
+    
 
     if( options == (minc_output_options *) NULL )
     {
         set_default_minc_output_options( &default_options );
         options = &default_options;
     }
+    
+    /*TODO: provide some other compression ? */
+    miset_props_compression_type(hprops, MI_COMPRESS_ZLIB);
+    miset_props_zlib_compression(hprops,4);
 
     if( dim_names == NULL )
     {
@@ -344,6 +305,7 @@ VIOAPI  Minc_file  initialize_minc2_output(
             print_error( "initialize_minc_output: " );
             print_error(
                 "can't use NULL dim_names except with 3 dimensions.\n" );
+            mifree_volume_props( hprops );
             return( (Minc_file) NULL );
         }
 
@@ -355,16 +317,21 @@ VIOAPI  Minc_file  initialize_minc2_output(
         file_nc_data_type = get_volume_nc_data_type( volume_to_attach,
                                                      &file_signed_flag );
         get_volume_voxel_range( volume_to_attach,
-                                &file_voxel_min, &file_voxel_max );
+                                &file_voxel_min, 
+                                &file_voxel_max );
     }
     else if( (file_nc_data_type == NC_FLOAT ||
               file_nc_data_type == NC_DOUBLE) &&
               file_voxel_min >= file_voxel_max )
     {
         get_volume_real_range( volume_to_attach,
-                               &file_voxel_min, &file_voxel_max );
+                               &file_voxel_min, 
+                               &file_voxel_max );
     }
 
+    file_minc_datatype = nc_type_to_minc2_type(file_nc_data_type ,
+                                               file_signed_flag);
+    
     /* --- check if dimension name correspondence between volume and file */
 
     n_volume_dims = get_volume_n_dimensions( volume_to_attach );
@@ -374,6 +341,7 @@ VIOAPI  Minc_file  initialize_minc2_output(
         print_error( "initialize_minc_output:" );
         print_error( " volume (%d) has more dimensions than file (%d).\n",
                      n_volume_dims, n_dimensions );
+        mifree_volume_props( hprops );
         return( (Minc_file) NULL );
     }
 
@@ -393,16 +361,21 @@ VIOAPI  Minc_file  initialize_minc2_output(
 
     vol_dimension_names = get_volume_dimension_names( volume_to_attach );
 
-    if( get_dimension_ordering( n_volume_dims, vol_dimension_names,
-                                n_dimensions, dim_names,
-                            file->to_volume_index, file->to_file_index ) != VIO_OK )
+    if( get_dimension_ordering( n_volume_dims,
+                                vol_dimension_names,
+                                n_dimensions,
+                                dim_names,
+                                file->to_volume_index,
+                                file->to_file_index ) != VIO_OK )
     {
         FREE( file );
+        delete_dimension_names( volume_to_attach, vol_dimension_names );
+        mifree_volume_props( hprops );
         return( (Minc_file) NULL );
     }
 
     delete_dimension_names( volume_to_attach, vol_dimension_names );
-
+    
     /*--- check if image range specified */
 
     if( options->global_image_range[0] >= options->global_image_range[1] )
@@ -418,7 +391,10 @@ VIOAPI  Minc_file  initialize_minc2_output(
                 print_error( "initialize_minc_output: " );
                 print_error( "if outputting volumes which don't contain all image\n");
                 print_error( "dimensions, then must specify global image range.\n" );
+                
                 FREE( file );
+                mifree_volume_props( hprops );
+                
                 return( (Minc_file) NULL );
             }
         }
@@ -437,40 +413,70 @@ VIOAPI  Minc_file  initialize_minc2_output(
             print_error( "initialize_minc_output: " );
             print_error( "volume size[%d]=%d does not match file[%d]=%d.\n",
                    vol_index, volume_sizes[vol_index], d, sizes[d] );
+
+            mifree_volume_props( hprops );
             return( NULL );
         }
     }
 
-    /*--- create the file */
-
-    /*file->cdfid =  micreate( file->filename, NC_CLOBBER );*/
-
-    if( file->cdfid == MI_ERROR )
-    {
-        print_error( "Error: opening MINC2 file \"%s\".\n", file->filename );
-        return( NULL );
-    }
-
-    /* Create the root variable */
-/*    (void) micreate_std_variable(file->cdfid, MIrootvariable,
-                                 NC_INT, 0, NULL);
-*/
+    printf("Creating MINC2 dimensions: %d\n",n_dimensions);
     for_less( d, 0, n_dimensions )
     {
         file->sizes_in_file[d] = (long) sizes[d];
         file->indices[d] = 0;
         file->dim_names[d] = create_string( dim_names[d] );
-      /*
-        file->image_dims[d] = ncdimdef( file->cdfid, file->dim_names[d],
-                                        (long) sizes[d] );*/
+
+        if(equal_strings( dim_names[d], MIvector_dimension ) )
+        {
+          micreate_dimension(file->dim_names[d],
+                           MI_DIMCLASS_RECORD,
+                           MI_DIMATTR_REGULARLY_SAMPLED,
+                           (misize_t)file->sizes_in_file[d],
+                           &minc_dimensions[d] );
+        } else if (equal_strings( dim_names[d], MItime ) ) {
+          micreate_dimension(file->dim_names[d],
+                           MI_DIMCLASS_TIME,
+                           MI_DIMATTR_REGULARLY_SAMPLED,/*TODO: make sure time is regularly sampled here*/
+                           (misize_t)file->sizes_in_file[d],
+                           &minc_dimensions[d] );
+        } else {
+          micreate_dimension(file->dim_names[d],
+                           MI_DIMCLASS_SPATIAL,
+                           MI_DIMATTR_REGULARLY_SAMPLED,
+                           (misize_t)file->sizes_in_file[d],
+                           &minc_dimensions[d] );
+        }
+        printf("\tDim %d: %s\n",d,dim_names[d]);
     }
 
     if( output_world_transform( file, volume_to_attach->coordinate_system_name,
                                 voxel_to_world_transform,
-                                options->use_volume_starts_and_steps ) != VIO_OK )
+                                options->use_volume_starts_and_steps , minc_dimensions) != VIO_OK )
     {
       /*TODO: print error message*/
-        FREE( file );
+      mifree_volume_props( hprops );
+      FREE( file );
+      return( NULL );
+    }
+    /*--- create the file */
+
+    if( micreate_volume ( file->filename,
+                          n_dimensions ,
+                          minc_dimensions,
+                          file_minc_datatype,
+                          MI_CLASS_REAL,
+                          hprops,
+                          &file->minc2id) <0 )
+    {
+        print_error( "Error: creating MINC2 file \"%s\".\n", file->filename );
+        mifree_volume_props( hprops );
+        return( NULL );
+    }
+    
+    if (  micreate_volume_image ( file->minc2id ) <0 )
+    {
+        print_error( "Error: creating MINC2 file \"%s\".\n", file->filename );
+        mifree_volume_props( hprops );
         return( NULL );
     }
 
@@ -480,25 +486,28 @@ VIOAPI  Minc_file  initialize_minc2_output(
 
     file->nc_data_type = file_nc_data_type;
     file->signed_flag = file_signed_flag;
+    
     file->valid_range[0] = file_voxel_min;
     file->valid_range[1] = file_voxel_max;
-            
     file->image_range[0] = options->global_image_range[0];
     file->image_range[1] = options->global_image_range[1];
 
+    miset_volume_valid_range(file->minc2id,file->valid_range[1],file->valid_range[0]);
+    
     if( file->image_range[0] < file->image_range[1] )
     {
-      /*
-        file->min_id = micreate_std_variable( file->cdfid, MIimagemin,
-                                              NC_DOUBLE, 0, (int *) NULL );
-        file->max_id = micreate_std_variable( file->cdfid, MIimagemax,
-                                              NC_DOUBLE, 0, (int *) NULL );*/
+      miset_slice_scaling_flag(file->minc2id, 0 );
+      miset_volume_range(file->minc2id,file->image_range[1],file->image_range[0]);
+      
     }
     else
     {
+        miset_slice_scaling_flag(file->minc2id, 1 );
+        
         n_range_dims = n_dimensions - 2;
         if( equal_strings( dim_names[n_dimensions-1], MIvector_dimension ) )
             --n_range_dims;
+        
 /*
         file->min_id = micreate_std_variable( file->cdfid, MIimagemin,
                                               NC_DOUBLE, n_range_dims, 
@@ -536,18 +545,29 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_minc2_file(
     VIO_STR      history_string )
 {
     VIO_Status  status;
-    int     src_cdfid=0;
     VIO_STR  expanded;
+    mihandle_t    minc_id;
+
 
     if( file->ignoring_because_cached )
         return( VIO_OK );
 
-
     expanded = expand_filename( filename );
+    
+    if ( miopen_volume(expanded, MI2_OPEN_READ, &minc_id) < 0 )
+    {
+        print_error( "Error opening %s\n", expanded );
 
-    status = copy_auxiliary_data_from_open_minc2_file( file, src_cdfid,
+        delete_string( expanded );
+
+        return -1 ;
+    }
+
+    
+    status = copy_auxiliary_data_from_open_minc2_file( file, minc_id,
                                                       history_string );
-
+    
+    delete_string( expanded );
     return( status );
 }
 
@@ -569,7 +589,7 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_minc2_file(
 
 VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
     Minc_file    file,
-    int          src_cdfid,
+    mihandle_t   minc_id,
     VIO_STR      history_string )
 {
     int     src_img_var, varid, n_excluded, excluded_vars[10];
@@ -642,12 +662,7 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
     {
         /* Set info for copying image attributes. Unset afterwards, just
            to be safe. */
-        file->src_cdfid = src_cdfid;
-        file->src_img_var = src_img_var;
-
         status = end_file_def( file );
-
-        file->src_img_var = MI_ERROR;
 
         if( status != VIO_OK )
         {
@@ -658,9 +673,6 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
     if( status == VIO_OK )
     {
         file->end_def_done = TRUE;
-
-        /*(void) micopy_all_var_values( src_cdfid, file->cdfid,
-                                      n_excluded, excluded_vars );*/
     }
 
     return( status );
@@ -685,50 +697,28 @@ VIOAPI  VIO_Status  add_minc2_history(
     Minc_file    file,
     VIO_STR      history_string )
 {
-    int      old_att_length;
-    nc_type  datatype;
     VIO_STR   new_history;
+    size_t    minc_history_length=0;
+    size_t    minc_new_history_lenght=0;
 
     if( file->end_def_done )
     {
         print_error( "Cannot call add_minc_history when not in define mode\n" );
         return( VIO_ERROR );
     }
-
-  /*
-    if( ncattinq(file->cdfid, NC_GLOBAL, MIhistory, &datatype, &old_att_length)
-                                                          == MI_ERROR ||
-        datatype != NC_CHAR )
+    
+    if(miget_attr_length(file->minc2id,"","history",&minc_history_length) == MI_NOERROR)
     {
-        old_att_length = 0;
+      new_history=alloc_string(minc_history_length+strlen(history_string)+1);
+      
+      if( miget_attr_values(file->minc2id,MI_TYPE_STRING,"","history",minc_history_length,new_history) == MI_NOERROR)
+      {
+        concat_to_string( &new_history, history_string );
+        miset_attr_values(file->minc2id,MI_TYPE_STRING,"","history",minc_history_length+strlen(history_string),new_history);
+      }
+      delete_string( new_history );
     }
-*/
-    /* Allocate a string and get the old history */
-
-    new_history = alloc_string( old_att_length );
-    new_history[0] = (char) 0;
-/*
-    (void) miattgetstr( file->cdfid, NC_GLOBAL, MIhistory, old_att_length+1,
-                        new_history );*/
-
-/*
-    if( new_history[old_att_length] != (char) 0 )
-    {
-        print( "old_att_length %d  %d\n", old_att_length,
-                new_history[old_att_length] );
-        new_history[old_att_length] = (char) 0;
-        print( "string: %d\n", new_history );
-    }
-*/
-
-    /* Add the new command and put the new history. */
-
-    concat_to_string( &new_history, history_string );
-
-/*    (void) miattputstr( file->cdfid, NC_GLOBAL, MIhistory, new_history );*/
-
-    delete_string( new_history );
-
+    
     return( VIO_OK );
 }
 
@@ -822,7 +812,6 @@ static  VIO_Status  check_minc2_output_variables(
     if( !file->end_def_done )
     {
         /* --- Get into data mode */
-
         status = end_file_def( file );
         file->end_def_done = TRUE;
 
@@ -852,6 +841,7 @@ static  VIO_Status  check_minc2_output_variables(
             }
         }
 
+       /*TODO: write out slice ranges here?*/
       /*
         file->minc_icv = miicv_create();
 
@@ -959,8 +949,8 @@ VIOAPI  VIO_Status  output_minc2_hyperslab(
 {
     int              ind, expected_ind, file_ind, dim;
     int              n_file_dims, n_tmp_dims;
-    long             long_file_start[VIO_MAX_DIMENSIONS];
-    long             long_file_count[VIO_MAX_DIMENSIONS];
+    misize_t         long_file_start[VIO_MAX_DIMENSIONS];
+    misize_t         long_file_count[VIO_MAX_DIMENSIONS];
     void             *void_ptr;
     VIO_BOOL         direct_from_array, non_full_size_found;
     int              tmp_ind, tmp_sizes[VIO_MAX_DIMENSIONS];
@@ -1058,7 +1048,13 @@ VIOAPI  VIO_Status  output_minc2_hyperslab(
         status = VIO_ERROR;
     else
         status = VIO_OK;*/
-    /*TODO: write out data using minc2 api*/
+    
+    status = VIO_OK;
+    
+    if( miset_hyperslab_with_icv(file->minc2id,
+         vio_type_to_minc2_type(data_type),
+         long_file_start,long_file_count,void_ptr) <0 )
+      status = VIO_ERROR;
 
     if( !direct_from_array )
         delete_multidim_array( &buffer_array );
@@ -1186,6 +1182,7 @@ static  void  output_slab2(
         /*--- output the temporary array */
 
         GET_MULTIDIM_PTR( array_data_ptr, array, 0, 0, 0, 0, 0 );
+        
         output_minc2_hyperslab( file, get_volume_data_type(volume),
                                       n_slab_dims, slab_sizes, array_data_ptr,
                                       to_array, int_file_start, int_file_count);
@@ -1564,20 +1561,17 @@ VIOAPI  VIO_Status  close_minc2_output(
         return( VIO_ERROR );
     }
 
-    if( !file->ignoring_because_cached )
+    if( file->outputting_in_order && !file->entire_file_written )
     {
-        if( file->outputting_in_order && !file->entire_file_written )
-        {
-            print_error( "Warning:  the MINC2 file has been " );
-            print_error( "closed without writing part of it.\n");
-        }
-
-        for_less( d, 0, file->n_file_dimensions )
-            delete_string( file->dim_names[d] );
-      
-      /*TODO: close minc2 file*/
+        print_error( "Warning:  the MINC2 file has been " );
+        print_error( "closed without writing part of it.\n");
     }
 
+    for_less( d, 0, file->n_file_dimensions )
+        delete_string( file->dim_names[d] );
+      
+    miclose_volume( file->minc2id );
+    
     delete_string( file->filename );
 
     FREE( file );

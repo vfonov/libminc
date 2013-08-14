@@ -1547,7 +1547,7 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc_file(
 
 VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
     Minc_file    file,
-    int          src_cdfid,
+    mihandle_t   minc_id,
     VIO_STR      history_string );
 
 VIOAPI  VIO_Status  add_minc_history(
@@ -1876,6 +1876,20 @@ VIOAPI  VIO_STR  *get_default_dim_names(
 VIOAPI  VIO_BOOL convert_dim_name_to_spatial_axis(
     VIO_STR  name,
     int     *axis );
+
+VIOAPI mitype_t vio_type_to_minc2_type(
+    VIO_Data_types  vio_data_type);
+
+VIOAPI VIO_Data_types  minc2_type_to_vio_type(
+    mitype_t    minc_data_type);
+
+VIOAPI mitype_t nc_type_to_minc2_type(
+    nc_type  nc_data_type,
+    VIO_BOOL signed_flag );
+
+VIOAPI VIO_Data_types  minc2_type_to_vio_type(
+    mitype_t    minc_data_type);
+
 
 VIOAPI   VIO_Volume   create_volume(
     int         n_dimensions,
