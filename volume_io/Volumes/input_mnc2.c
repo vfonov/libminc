@@ -88,8 +88,9 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
     char                spacing_type[MI_MAX_ATTSTR_LEN+1];
     double              *irr_starts[MAX_VAR_DIMS];
     double              *irr_widths[MAX_VAR_DIMS];
-    double              volume_min=0.0,volume_max=1.0;
-    double              valid_min,valid_max;
+    
+    double              volume_min=0.0,volume_max=0.0;
+    double              valid_min=0.0,valid_max=0.0;
     
     miboolean_t         slice_scaling_flag=0;
     miboolean_t         global_scaling_flag=0;
@@ -114,31 +115,92 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
 
     miget_data_type(file->minc2id, &file_datatype);
     miget_volume_valid_range(file->minc2id,&valid_max,&valid_min);
-    
     miget_slice_scaling_flag(file->minc2id, &slice_scaling_flag);
-    
+
     if( !slice_scaling_flag )
     {
       miget_volume_range(file->minc2id,&volume_max,&volume_min);
       global_scaling_flag=!(volume_min == valid_min && volume_max == valid_max);
     }
+
+    /*Some logic to determine what we are dealing with*/
+    if(slice_scaling_flag || 
+       global_scaling_flag )
+    {
+      /*force reading in float*/
+      if(file_datatype!=MI_TYPE_FLOAT && file_datatype!=MI_TYPE_DOUBLE)
+        file_datatype=MI_TYPE_FLOAT;
+    }
     
     miget_volume_dimension_count(file->minc2id, MI_DIMCLASS_ANY, MI_DIMATTR_ALL, 
                                  &file->n_file_dimensions);
-    
+
     miget_volume_dimensions(file->minc2id, MI_DIMCLASS_ANY, MI_DIMATTR_ALL, 
                             MI_DIMORDER_FILE, file->n_file_dimensions,
                             file_dims);
-    
+
     miget_dimension_sizes(file_dims, file->n_file_dimensions, dimension_size);
     miget_dimension_separations(file_dims, MI_ORDER_FILE, file->n_file_dimensions, file_step);
     miget_dimension_starts(file_dims, MI_ORDER_FILE, file->n_file_dimensions, file_start);
-    
+
     for_less( d, 0, file->n_file_dimensions )
     {
       miget_dimension_name(file_dims[d], &dim_name);
       file->dim_names[d] = create_string( dim_name );
       file->sizes_in_file[d] = dimension_size[d];
+    }
+    
+    /*calculate global volume range, to satisfy volume_io*/
+    if(slice_scaling_flag) 
+    {
+      int n_slice_dimensions=file->n_file_dimensions;
+      int slices_count=1;
+      
+      if(miget_slice_dimension_count(file->minc2id, 
+                                 MI_DIMCLASS_ANY, MI_DIMATTR_ALL, 
+                                 &n_slice_dimensions)<0)
+        print_error("Can't get slice dimensions!\n");
+      
+      if(n_slice_dimensions==file->n_file_dimensions)
+      {
+        slice_scaling_flag=0;
+        /*figure out what to do?*/
+      }
+      n_slice_dimensions=file->n_file_dimensions-n_slice_dimensions;
+      
+     
+      /*now iterate throught all slices to find out global image intensity range*/
+      for_less(d,0,n_slice_dimensions)
+      {
+        slices_count*=dimension_size[d];
+      }
+      misize_t *slice_start=calloc(n_slice_dimensions,sizeof(misize_t));
+      miget_slice_range(file->minc2id,slice_start,n_slice_dimensions,&volume_max,&volume_min);
+      
+      do
+      {
+          d=0;
+          double slice_min,slice_max;
+          /*iteration trough dimensions*/
+          while(d<n_slice_dimensions)
+          {
+            slice_start[d]++;
+            if(slice_start[d]>=dimension_size[d])
+            {
+              slice_start[d]=0;
+              d++;
+            } else 
+              break;
+          }
+          
+          if(d==n_slice_dimensions) break;/*all dimensions are finished*/
+          
+          miget_slice_range(file->minc2id,slice_start,n_slice_dimensions,&slice_max,&slice_min);
+          if(volume_max<slice_max) volume_max=slice_max;
+          if(volume_min>slice_min) volume_min=slice_min;
+      } while(1);
+
+      free(slice_start);
     }
 
     file->converting_to_colour = FALSE;
@@ -177,7 +239,6 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
     }
 
     n_vol_dims = get_volume_n_dimensions( volume );
-
     if( file->n_file_dimensions < n_vol_dims )
     {
         print_error( "Error: MINC file has only %d dims, volume requires %d.\n",
@@ -194,7 +255,6 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
     }
 
     /* --- match the dimension names of the volume with those in the file */
-
     if( !match_dimension_names( get_volume_n_dimensions(volume),
                                 volume->dimension_names,
                                 file->n_file_dimensions, file->dim_names,
@@ -307,7 +367,6 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
           irr_starts[d] = malloc(sizeof(VIO_Real) * file->sizes_in_file[d]);
           irr_widths[d] = malloc(sizeof(VIO_Real) * file->sizes_in_file[d]);
 
-          
           miget_dimension_widths(file_dims[d],MI_ORDER_FILE,(misize_t)file->sizes_in_file[d],0,irr_widths[d]);
           
           /*TODO: figure out how to do it in MINC2 API, right now it is not obvious*/
@@ -385,7 +444,7 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
                                         irr_starts[d]);
             FREE( irr_starts[d] );
         }
-        
+
         if (irr_widths[d] != NULL) {
             set_volume_irregular_widths(volume, file->to_volume_index[d],
                                         file->sizes_in_file[d],
@@ -393,7 +452,6 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
             FREE( irr_widths[d] );
         }
     }
-                                        
     /* --- create the image conversion variable */
     get_volume_voxel_range( volume, &valid_range[0], &valid_range[1] );
     range_specified = (valid_range[0] < valid_range[1]);
@@ -403,12 +461,10 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
 
     if( file->converting_to_colour )
     {
-        valid_range[0] = 0.0;
-        valid_range[1] = 2.0 * (double) (1ul << 31ul) - 1.0;
-        set_volume_voxel_range( volume, valid_range[0], valid_range[1] );
-    }
-    else if( no_volume_data_type )
-    {
+      valid_range[0] = 0.0;
+      valid_range[1] = 2.0 * (double) (1ul << 31ul) - 1.0;
+      set_volume_voxel_range( volume, valid_range[0], valid_range[1] );
+    } else if( no_volume_data_type ) {
       valid_range[0]=valid_min;
       valid_range[1]=valid_max;
     }
@@ -420,43 +476,7 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
     }
 
     if( !file->converting_to_colour )
-    {
-    }
-    else
-    {
-      /*TODO: figure out what it means in MINC2 world*/
-    }
-
-    if( options->convert_vector_to_scalar_flag && !file->converting_to_colour )
-    {
-      /*TODO: figure out what it means in MINC2 world*/
-    }
-
-    if( !file->converting_to_colour )
-        set_volume_real_range( volume, real_min, real_max );
-
-    /* --- if promoting invalid values to zero, then we need to detach and
-           reattach in order to change the fillvalue in the icv */
-
-    if( options->promote_invalid_to_zero_flag )
-    {
-        /*TODO: figure out what it means in MINC2 world*/
-        if( !file->converting_to_colour )
-        {
-            if( real_min == real_max )
-                voxel_zero = valid_range[0];
-            else if( real_min > 0.0 )
-                voxel_zero = valid_range[0];
-            else if( real_max < 0.0 )
-                voxel_zero = valid_range[1];
-            else
-            {
-                voxel_zero = valid_range[0] +
-                             (valid_range[1] - valid_range[0]) *
-                             (0.0 - real_min) / (real_max - real_min);
-            }
-        }
-    }
+      set_volume_real_range( volume, volume_min, volume_max );
 
     for_less( d, 0, file->n_file_dimensions )
         file->indices[d] = 0;
@@ -473,8 +493,8 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
 
     for( d = file->n_file_dimensions-1; d >= 0; d-- ) {
       if( file->to_volume_index[d] != INVALID_AXIS ) {
-          slab_size *= file->sizes_in_file[d];
-          file->n_slab_dims++;  /* integral number of complete dimensions */
+        slab_size *= file->sizes_in_file[d];
+        file->n_slab_dims++;  /* integral number of complete dimensions */
       }
     }
 
@@ -483,15 +503,15 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
     different = FALSE;
     for_less( d, 0, n_vol_dims )
     {
-        if( sizes[d] != prev_sizes[d] )
-            different = TRUE;
+      if( sizes[d] != prev_sizes[d] )
+        different = TRUE;
     }
 
     if( prev_minc_type != converted_minc_type )
-        different = TRUE;
+      different = TRUE;
 
     if( different && volume_is_alloced( volume )  )
-        free_volume_data( volume );
+      free_volume_data( volume );
 
     return( file );
 }
@@ -559,26 +579,24 @@ VIOAPI  Minc_file  initialize_minc2_input(
 VIOAPI  VIO_Status  close_minc2_input(
     Minc_file   file )
 {
-    int  d;
+  int  d;
 
-    if( file == (Minc_file) NULL )
-    {
-        print_error( "close_minc_input(): NULL file.\n" );
-        return( VIO_ERROR );
-    }
+  if( file == (Minc_file) NULL )
+  {
+      print_error( "close_minc_input(): NULL file.\n" );
+      return( VIO_ERROR );
+  }
 
-    miclose_volume( file->minc2id );
+  miclose_volume( file->minc2id );
 
-    
-    for_less( d, 0, file->n_file_dimensions )
-        delete_string( file->dim_names[d] );
+  for_less( d, 0, file->n_file_dimensions )
+      delete_string( file->dim_names[d] );
 
-    delete_string( file->filename );
+  delete_string( file->filename );
 
-    delete_general_transform( &file->voxel_to_world_transform );
-    FREE( file );
-
-    return( VIO_OK );
+  delete_general_transform( &file->voxel_to_world_transform );
+  FREE( file );
+  return( VIO_OK );
 }
 
 /* ----------------------------- MNI Header -----------------------------------
@@ -699,9 +717,10 @@ VIOAPI  VIO_Status   input_minc2_hyperslab(
         void_ptr = array_data_ptr;
     }
 
+    
     if( miget_hyperslab_with_icv(file->minc2id,
          get_volume_minc2_data_type(file->volume),
-         used_start,used_count,void_ptr)<0 )
+         used_start,used_count,void_ptr) < 0 )
     {
         status = VIO_ERROR;
         if( file->converting_to_colour )

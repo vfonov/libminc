@@ -282,6 +282,7 @@ VIOAPI  VIO_Status  input_volume(
     volume_input_struct  input_info;
     VIO_progress_struct  progress;
     static const int     FACTOR = 1000;
+    VIO_Real             volume_min=0.0,volume_max=0.0;
 
     status = start_volume_input( filename, n_dimensions, dim_names,
                                  volume_nc_data_type, volume_signed_flag,
@@ -309,6 +310,8 @@ VIOAPI  VIO_Status  input_volume(
           status = VIO_ERROR;
         }
     }
+    get_volume_voxel_range( *volume, &volume_min, &volume_max );
+    printf("Read volume %s min=%g max=%g\n",filename,volume_min, volume_max);
 
     return( status );
 }

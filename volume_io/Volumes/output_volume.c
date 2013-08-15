@@ -338,7 +338,7 @@ VIOAPI  VIO_Status  output_modified_volume(
 
     if( options == NULL )
         set_default_minc_output_options( &used_options );
-    else
+    else 
         used_options = *options;
 
     if( used_options.global_image_range[0] >=
@@ -347,6 +347,8 @@ VIOAPI  VIO_Status  output_modified_volume(
         get_volume_real_range( volume, &real_min, &real_max );
         set_minc_output_real_range( &used_options, real_min, real_max );
     }
+    printf("Options3: %g %g\n",used_options.global_image_range[0],used_options.global_image_range[1]);        
+
 
     /*--- if the user has not explicitly set the use_volume_starts_and_steps
           flag, let's set it if the transform is linear, to output the

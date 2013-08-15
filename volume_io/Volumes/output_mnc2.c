@@ -197,36 +197,6 @@ static  VIO_Status  output_world_transform(
 
 
 /* ----------------------------- MNI Header -----------------------------------
-@NAME       : end_file_def
-@INPUT      : file
-@OUTPUT     : 
-@RETURNS    : 
-@DESCRIPTION: Ends the definition of the file, calling ncendef, but
-              first creating the image variable as the last variable in 
-              the file. This is done to allow images > 2 GB (on 64-bit 
-              machines) and to ensure that data is written right to the 
-              end of the file for backwards compatibility.
-@METHOD     : 
-@GLOBALS    : 
-@CALLS      : 
-@CREATED    : September 13, 2001    Peter Neelin
-@MODIFIED   : 
----------------------------------------------------------------------------- */
-
-static VIO_Status end_file_def(Minc_file file)
-{
-   int ret;
-/*
-   create_image_variable(file);
-
-   ret = ncendef( file->cdfid );
-
-   return ( ret == MI_ERROR ? VIO_ERROR : VIO_OK );
-*/
-  return VIO_OK;
-}
-
-/* ----------------------------- MNI Header -----------------------------------
 @NAME       : initialize_minc2_output
 @INPUT      : filename
               n_dimensions
@@ -280,18 +250,19 @@ VIOAPI  Minc_file  initialize_minc2_output(
     mitype_t            file_minc_datatype;
     midimhandle_t       minc_dimensions[VIO_MAX_DIMENSIONS];
     mivolumeprops_t     hprops;
-    
+
     if( minew_volume_props(&hprops) < 0)
     {
       return NULL;
     }
 
-    
-
     if( options == (minc_output_options *) NULL )
     {
         set_default_minc_output_options( &default_options );
         options = &default_options;
+        printf("Using default options\n");
+    } else {
+      printf("Options: %g %g\n",options->global_image_range[0],options->global_image_range[1]);
     }
     
     /*TODO: provide some other compression ? */
@@ -498,26 +469,15 @@ VIOAPI  Minc_file  initialize_minc2_output(
     {
       miset_slice_scaling_flag(file->minc2id, 0 );
       miset_volume_range(file->minc2id,file->image_range[1],file->image_range[0]);
-      
-    }
-    else
-    {
-        miset_slice_scaling_flag(file->minc2id, 1 );
-        
-        n_range_dims = n_dimensions - 2;
-        if( equal_strings( dim_names[n_dimensions-1], MIvector_dimension ) )
-            --n_range_dims;
-        
-/*
-        file->min_id = micreate_std_variable( file->cdfid, MIimagemin,
-                                              NC_DOUBLE, n_range_dims, 
-                                              file->image_dims);
-        file->max_id = micreate_std_variable( file->cdfid, MIimagemax,
-                                              NC_DOUBLE, n_range_dims, 
-                                              file->image_dims );*/
+      printf("File range: %g %g \n",file->image_range[1],file->image_range[0]);
+    } else {
+      get_volume_real_range( volume_to_attach, &file->image_range[0], &file->image_range[1] );
+      /*miset_slice_scaling_flag(file->minc2id, 1 );*/
+      miset_slice_scaling_flag(file->minc2id, 0 );
+      miset_volume_range(file->minc2id,file->image_range[1],file->image_range[0]);
+      printf("File range: %f %f \n",file->image_range[1],file->image_range[0]);
     }
 
-    file->end_def_done = FALSE;
     file->variables_written = FALSE;
 
     return( file );
@@ -658,22 +618,6 @@ VIOAPI  VIO_Status  copy_auxiliary_data_from_open_minc2_file(
     if( history_string != NULL )
         status = add_minc2_history( file, history_string );
 
-    if( status == VIO_OK )
-    {
-        /* Set info for copying image attributes. Unset afterwards, just
-           to be safe. */
-        status = end_file_def( file );
-
-        if( status != VIO_OK )
-        {
-            print_error( "Error outputting volume: possibly disk full?\n" );
-        }
-    }
-
-    if( status == VIO_OK )
-    {
-        file->end_def_done = TRUE;
-    }
 
     return( status );
 }
@@ -803,24 +747,11 @@ static  VIO_Status  check_minc2_output_variables(
     Minc_file   file )
 {
     int               d, axis;
-    long              start_index, mindex[MAX_VAR_DIMS];
+    misize_t          start_index;
     VIO_Real          voxel_min, voxel_max, real_min, real_max;
     double            dim_value;
     VIO_Volume        volume;
     VIO_Status        status;
-
-    if( !file->end_def_done )
-    {
-        /* --- Get into data mode */
-        status = end_file_def( file );
-        file->end_def_done = TRUE;
-
-        if( status != VIO_OK )
-        {
-            print_error( "Error outputting volume: possibly disk full?\n" );
-            return( status );
-        }
-    }
 
     if( !file->variables_written )
     {
@@ -828,64 +759,23 @@ static  VIO_Status  check_minc2_output_variables(
 
         file->variables_written = TRUE;
 
-        for_less( d, 0, file->n_file_dimensions )
-            mindex[d] = 0;
-
         dim_value = 0.0;
-        for_less( d, 0, file->n_file_dimensions )
-        {
-            if( convert_dim_name_to_spatial_axis( file->dim_names[d], &axis ) )
-            {
-             /*   (void) mivarput1( file->cdfid, file->dim_ids[d], mindex,
-                                  NC_DOUBLE, MI_SIGNED, &dim_value );*/
-            }
-        }
-
-       /*TODO: write out slice ranges here?*/
-      /*
-        file->minc_icv = miicv_create();
-
-        (void) miicv_setint( file->minc_icv, MI_ICV_TYPE,
-                             (int) volume->nc_data_type);
-        (void) miicv_setstr( file->minc_icv, MI_ICV_SIGN,
-                             volume->signed_flag ? MI_SIGNED : MI_UNSIGNED );
-        (void) miicv_setint( file->minc_icv, MI_ICV_DO_NORM, TRUE );
-        (void) miicv_setint( file->minc_icv, MI_ICV_USER_NORM, TRUE );
-
-        if( file->image_range[0] < file->image_range[1] )
-        {
-            (void) miicv_setdbl( file->minc_icv, MI_ICV_IMAGE_MIN,
-                                 file->image_range[0] );
-            (void) miicv_setdbl( file->minc_icv, MI_ICV_IMAGE_MAX,
-                                 file->image_range[1] );
-        }
-        else
-        {
-            get_volume_real_range( volume, &real_min, &real_max );
-            (void) miicv_setdbl( file->minc_icv, MI_ICV_IMAGE_MIN, real_min );
-            (void) miicv_setdbl( file->minc_icv, MI_ICV_IMAGE_MAX, real_max );
-        }
 
         get_volume_voxel_range( volume, &voxel_min, &voxel_max );
         if( voxel_min < voxel_max )
         {
-            (void) miicv_setdbl( file->minc_icv, MI_ICV_VALID_MIN, voxel_min );
-            (void) miicv_setdbl( file->minc_icv, MI_ICV_VALID_MAX, voxel_max );
+          miset_volume_valid_range(file->minc2id,voxel_max,voxel_min);
         }
         else
-            print_error( "Volume has invalid min and max voxel value\n" );
-
-        (void) miicv_attach( file->minc_icv, file->cdfid, file->img_var_id );
+          print_error( "Volume has invalid min and max voxel value\n" );
 
         start_index = 0;
 
         if( file->image_range[0] < file->image_range[1] )
         {
-            (void) mivarput1( file->cdfid, file->min_id, &start_index,
-                              NC_DOUBLE, MI_SIGNED, &file->image_range[0] );
-            (void) mivarput1( file->cdfid, file->max_id, &start_index,
-                              NC_DOUBLE, MI_SIGNED, &file->image_range[1] );
-        }*/
+          /*TODO: check if this is needed here!*/
+          /*miset_slice_range(file->minc2id,&start_index,1,file->image_range[1],file->image_range[0]);*/
+        }
     }
 
     return( VIO_OK );
@@ -1042,13 +932,6 @@ VIOAPI  VIO_Status  output_minc2_hyperslab(
     }
 
     /*--- output the data to the file */
-/*
-    if( miicv_put( file->minc_icv, long_file_start, long_file_count,
-                   void_ptr ) == MI_ERROR )
-        status = VIO_ERROR;
-    else
-        status = VIO_OK;*/
-    
     status = VIO_OK;
     
     if( miset_hyperslab_with_icv(file->minc2id,
@@ -1224,7 +1107,7 @@ static  VIO_Status  output_the_volume2(
     int         volume_count[],
     long        file_start[] )
 {
-    VIO_Status            status;
+    VIO_Status        status;
     int               d, n_volume_dims, sizes[VIO_MAX_DIMENSIONS];
     int               slab_size, n_slab, this_count;
     int               vol_index, step, n_steps, n_range_dims;
@@ -1232,9 +1115,9 @@ static  VIO_Status  output_the_volume2(
     int               to_file_index[VIO_MAX_DIMENSIONS];
     long              file_indices[MAX_VAR_DIMS];
     long              count[MAX_VAR_DIMS];
-    VIO_Real           real_min, real_max;
-    VIO_STR            *vol_dimension_names;
-    VIO_BOOL           increment;
+    VIO_Real          real_min, real_max;
+    VIO_STR           *vol_dimension_names;
+    VIO_BOOL          increment;
     VIO_progress_struct   progress;
 
     status = check_minc2_output_variables( file );
@@ -1303,60 +1186,6 @@ static  VIO_Status  output_the_volume2(
         }
     }
 
-    /*--- if per slice image ranges, output the ranges corresponding to this
-          volume */
-
-    if( file->image_range[0] >= file->image_range[1] )
-    {
-        long     n_ranges, range_start[MAX_VAR_DIMS], range_count[MAX_VAR_DIMS];
-        long     r;
-        double   *image_range;
-
-        n_range_dims = file->n_file_dimensions - 2;
-        if( equal_strings( file->dim_names[file->n_file_dimensions-1],
-                           MIvector_dimension ) )
-            --n_range_dims;
-
-        n_ranges = 1;
-        for_less( d, 0, n_range_dims )
-        {
-            vol_index = to_volume_index[d];
-            if( vol_index == INVALID_AXIS )
-            {
-                range_count[d] = 1;
-                range_start[d] = file_start[d];
-            }
-            else
-            {
-                n_ranges *= (long) volume_count[vol_index];
-                range_count[d] = (long) volume_count[vol_index];
-                range_start[d] = 0;
-            }
-        }
-
-        get_volume_real_range( volume, &real_min, &real_max );
-
-        ALLOC( image_range, n_ranges );
-
-        for_less( r, 0, n_ranges )
-            image_range[r] = real_min;
-
-        /*
-        mivarput( file->cdfid, file->min_id,
-                         range_start, range_count,
-                         NC_DOUBLE, MI_UNSIGNED, (void *) image_range );*/
-
-        for_less( r, 0, n_ranges )
-            image_range[r] = real_max;
-
-        /*
-        mivarput( file->cdfid, file->max_id,
-                         range_start, range_count,
-                         NC_DOUBLE, MI_UNSIGNED, (void *) image_range );*/
-
-        FREE( image_range );
-    }
-
     /* --- determine which contiguous blocks of volume to output
        to max out the read/write buffer and make it like the
        chunking dimensions for compression (for efficiency) */
@@ -1382,6 +1211,10 @@ static  VIO_Status  output_the_volume2(
       exit(1);
     }
 
+    /*DUMB code for fake intrslice scaling*/
+    if( file->image_range[0] >= file->image_range[1] )
+      get_volume_real_range( volume, &real_min, &real_max );
+
     /*--- now write entire volume in contiguous chunks (possibly only 1 req'd)*/
 
     step = 0;
@@ -1398,7 +1231,10 @@ static  VIO_Status  output_the_volume2(
           vol_index = to_volume_index[d];
           local_count[d] = MIN( volume_count[vol_index] - file_indices[d], count[d] );
         }
-
+        
+        if( file->image_range[0] >= file->image_range[1] )
+          miset_slice_range(file->minc2id,file_indices,file->n_file_dimensions,real_max,real_min);
+        
         output_slab2( file, volume, to_volume_index, file_indices, local_count );
 
         /*--- increment the file index dimensions which correspond

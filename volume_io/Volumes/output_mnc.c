@@ -27,11 +27,11 @@
 
 #define  UNITS           "mm"
 
-static  VIO_Status  get_dimension_ordering(
+static VIO_Status get_dimension_ordering(
     int          n_vol_dims,
-    VIO_STR       vol_dim_names[],
+    VIO_STR      vol_dim_names[],
     int          n_file_dims,
-    VIO_STR       file_dim_names[],
+    VIO_STR      file_dim_names[],
     int          to_volume[],
     int          to_file[] );
 
@@ -1836,4 +1836,3 @@ VIOAPI  void  set_minc_output_use_volume_starts_and_steps_flag(
     options->use_volume_starts_and_steps = flag;
     options->use_starts_set = TRUE;
 }
-
