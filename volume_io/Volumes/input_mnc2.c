@@ -379,7 +379,6 @@ VIOAPI  Minc_file  initialize_minc_input_from_minc2_id(
             start_position[d]=file_start[d];
         }
       }
-        
 
       if( file->to_volume_index[d] == INVALID_AXIS )
       {
