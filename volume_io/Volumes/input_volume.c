@@ -63,8 +63,6 @@ VIOAPI  VIO_Status  start_volume_input(
     VIO_STR             expanded_filename;
 
     status = VIO_OK;
-    
-    printf("start_volume_input filename=%s\n",filename);
 
     if( create_volume_flag || *volume == (VIO_Volume) NULL )
     {
@@ -311,7 +309,6 @@ VIOAPI  VIO_Status  input_volume(
         }
     }
     get_volume_voxel_range( *volume, &volume_min, &volume_max );
-    printf("Read volume %s min=%g max=%g\n",filename,volume_min, volume_max);
 
     return( status );
 }
