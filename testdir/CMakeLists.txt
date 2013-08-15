@@ -43,8 +43,11 @@ ENDIF(LIBMINC_MINC1_SUPPORT)
 ADD_EXECUTABLE(test_xfm   vio_xfm_test/test-xfm.c)
 TARGET_LINK_LIBRARIES(test_xfm ${VOLUME_IO_LIBRARY} ${LIBMINC_LIBRARIES})
 
+ADD_EXECUTABLE(copy_xfm   vio_xfm_test/copy-xfm.c)
+TARGET_LINK_LIBRARIES(copy_xfm ${VOLUME_IO_LIBRARY} ${LIBMINC_LIBRARIES})
+
 ADD_EXECUTABLE(create_grid_xfm create_grid_xfm.c)
-TARGET_LINK_LIBRARIES(create_grid_xfm ${VOLUME_IO_LIBRARY} ${LIBMINC_LIBRARIES} m)
+TARGET_LINK_LIBRARIES(create_grid_xfm ${VOLUME_IO_LIBRARY} ${LIBMINC_LIBRARIES})
 
 #ADD_TEST(create_grid_xfm create_grid_xfm)
 #ADD_TEST(test_speed test_speed)

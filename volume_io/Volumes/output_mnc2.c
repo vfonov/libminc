@@ -223,7 +223,7 @@ static VIO_Status end_file_def(Minc_file file)
 
    return ( ret == MI_ERROR ? VIO_ERROR : VIO_OK );
 */
-  return VIO_ERROR;
+  return VIO_OK;
 }
 
 /* ----------------------------- MNI Header -----------------------------------

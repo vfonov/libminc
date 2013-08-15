@@ -206,41 +206,43 @@ VIOAPI  VIO_Status  initialize_free_format_input(
     volume_input->directory = extract_directory( filename );
 
     if( status == VIO_OK )
-    if( volume_input->sizes_in_file[0] <= 0 )
     {
-        n_slices = 0;
+      if( volume_input->sizes_in_file[0] <= 0 )
+      {
+          n_slices = 0;
 
-        while( input_string( file, &slice_filename, (char) ' ' )==VIO_OK)
-        {
-            SET_ARRAY_SIZE( volume_input->slice_filenames, n_slices, n_slices+1,
-                            DEFAULT_CHUNK_SIZE );
-            volume_input->slice_filenames[n_slices] = slice_filename;
-            SET_ARRAY_SIZE( volume_input->slice_byte_offsets,
-                            n_slices, n_slices+1, DEFAULT_CHUNK_SIZE );
+          while( input_string( file, &slice_filename, (char) ' ' )==VIO_OK)
+          {
+              SET_ARRAY_SIZE( volume_input->slice_filenames, n_slices, n_slices+1,
+                              DEFAULT_CHUNK_SIZE );
+              volume_input->slice_filenames[n_slices] = slice_filename;
+              SET_ARRAY_SIZE( volume_input->slice_byte_offsets,
+                              n_slices, n_slices+1, DEFAULT_CHUNK_SIZE );
 
-            if( input_int( file, &volume_input->slice_byte_offsets[n_slices] )
-                != VIO_OK )
-            {
-                volume_input->slice_byte_offsets[n_slices] = 0;
-            }
+              if( input_int( file, &volume_input->slice_byte_offsets[n_slices] )
+                  != VIO_OK )
+              {
+                  volume_input->slice_byte_offsets[n_slices] = 0;
+              }
 
-            ++n_slices;
-        }
+              ++n_slices;
+          }
 
-        volume_input->sizes_in_file[0] = (long) n_slices;
-        volume_input->one_file_per_slice = TRUE;
-    }
-    else
-    {
-        volume_input->one_file_per_slice = FALSE;
-        status = input_string( file, &volume_filename, (char) ' ' );
-        abs_volume_filename = get_absolute_filename( volume_filename,
-                                                     volume_input->directory );
-        delete_string( volume_filename );
+          volume_input->sizes_in_file[0] = (long) n_slices;
+          volume_input->one_file_per_slice = TRUE;
+      }
+      else
+      {
+          volume_input->one_file_per_slice = FALSE;
+          status = input_string( file, &volume_filename, (char) ' ' );
+          abs_volume_filename = get_absolute_filename( volume_filename,
+                                                       volume_input->directory );
+          delete_string( volume_filename );
 
-        if( input_int( file, &volume_byte_offset ) != VIO_OK )
-            volume_byte_offset = 0;
+          if( input_int( file, &volume_byte_offset ) != VIO_OK )
+              volume_byte_offset = 0;
 
+      }
     }
 
     if( status == VIO_OK )
